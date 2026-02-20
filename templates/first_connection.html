@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Première connexion - SOS Thomas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .float-animation {
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen flex items-center justify-center py-8">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl">
+        <!-- Logo et titre -->
+        <div class="text-center mb-8">
+            <div class="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 float-animation">
+                <i class="fas fa-magic text-purple-600 text-3xl"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800">Bienvenue dans SOS Thomas !</h1>
+            <p class="text-gray-600 mt-2">C'est la première fois que vous utilisez l'application</p>
+        </div>
+
+        <!-- Message d'introduction -->
+        <div class="bg-purple-50 border border-purple-200 rounded-lg p-6 mb-8">
+            <div class="flex items-start">
+                <i class="fas fa-info-circle text-purple-600 mt-1 mr-3"></i>
+                <div>
+                    <h3 class="font-semibold text-purple-800 mb-2">Configuration initiale</h3>
+                    <p class="text-purple-700 text-sm">
+                        Pour commencer, vous devez créer le premier compte administrateur. 
+                        Ce compte aura accès à toutes les fonctionnalités de SOS Thomas.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulaire de premier compte -->
+        <form method="POST" action="{{ url_for('register') }}" class="space-y-6">
+            <input type="hidden" name="first_connection" value="true">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-user mr-2"></i>Nom d'utilisateur
+                    </label>
+                    <input type="text" name="username" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                           placeholder="admin">
+                    <p class="mt-1 text-xs text-gray-500">3-20 caractères, unique</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-envelope mr-2"></i>Email
+                    </label>
+                    <input type="email" name="email" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                           placeholder="admin@sosthomas.com">
+                    <p class="mt-1 text-xs text-gray-500">Pour la récupération du compte</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-lock mr-2"></i>Mot de passe
+                    </label>
+                    <input type="password" name="password" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                           placeholder="••••••••">
+                    <p class="mt-1 text-xs text-gray-500">Minimum 6 caractères</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-lock mr-2"></i>Confirmer le mot de passe
+                    </label>
+                    <input type="password" name="confirm_password" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                           placeholder="••••••••">
+                </div>
+            </div>
+
+            <!-- Validation en temps réel -->
+            <div id="validation-message" class="hidden">
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-triangle text-red-600 mr-2"></i>
+                        <span class="text-red-700 text-sm" id="validation-text"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Succès -->
+            <div id="success-message" class="hidden">
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle text-green-600 mr-2"></i>
+                        <span class="text-green-700 text-sm">Le formulaire est valide !</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center">
+                <input type="checkbox" id="admin-terms" class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
+                <label for="admin-terms" class="ml-2 block text-sm text-gray-700">
+                    Je comprends que ce sera le premier compte administrateur
+                </label>
+            </div>
+
+            <button type="submit" class="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed" id="create-admin-btn">
+                <i class="fas fa-user-shield mr-2"></i>Créer le compte administrateur
+            </button>
+        </form>
+
+        <!-- Informations supplémentaires -->
+        <div class="mt-8 bg-gray-50 rounded-lg p-6">
+            <h3 class="font-semibold text-gray-800 mb-3">
+                <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>Conseils de sécurité
+            </h3>
+            <ul class="space-y-2 text-sm text-gray-600">
+                <li class="flex items-start">
+                    <i class="fas fa-check text-green-500 mr-2 mt-0.5"></i>
+                    <span>Choisissez un mot de passe complexe avec lettres, chiffres et symboles</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fas fa-check text-green-500 mr-2 mt-0.5"></i>
+                    <span>Utilisez un email professionnel que vous consultez régulièrement</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fas fa-check text-green-500 mr-2 mt-0.5"></i>
+                    <span>Après la création, vous pourrez ajouter d'autres utilisateurs</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Validation du formulaire en temps réel
+        const username = document.querySelector('input[name="username"]');
+        const email = document.querySelector('input[name="email"]');
+        const password = document.querySelector('input[name="password"]');
+        const confirmPassword = document.querySelector('input[name="confirm_password"]');
+        const adminTerms = document.querySelector('#admin-terms');
+        const submitBtn = document.querySelector('#create-admin-btn');
+        const validationMessage = document.querySelector('#validation-message');
+        const successMessage = document.querySelector('#success-message');
+        const validationText = document.querySelector('#validation-text');
+
+        function validateForm() {
+            let errors = [];
+            
+            // Validation nom d'utilisateur
+            if (username.value.length < 3 || username.value.length > 20) {
+                errors.push('Le nom d\'utilisateur doit contenir entre 3 et 20 caractères');
+            }
+            
+            // Validation email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email.value)) {
+                errors.push('L\'email n\'est pas valide');
+            }
+            
+            // Validation mot de passe
+            if (password.value.length < 6) {
+                errors.push('Le mot de passe doit contenir au moins 6 caractères');
+            }
+            
+            // Validation confirmation mot de passe
+            if (password.value !== confirmPassword.value) {
+                errors.push('Les mots de passe ne correspondent pas');
+            }
+            
+            // Validation termes
+            if (!adminTerms.checked) {
+                errors.push('Vous devez accepter les conditions administrateur');
+            }
+            
+            // Afficher les messages
+            if (errors.length > 0) {
+                validationMessage.classList.remove('hidden');
+                successMessage.classList.add('hidden');
+                validationText.textContent = errors[0]; // Affiche la première erreur
+                submitBtn.disabled = true;
+            } else {
+                validationMessage.classList.add('hidden');
+                successMessage.classList.remove('hidden');
+                submitBtn.disabled = false;
+            }
+        }
+
+        // Écouteurs d'événements
+        [username, email, password, confirmPassword].forEach(input => {
+            input.addEventListener('input', validateForm);
+        });
+        
+        adminTerms.addEventListener('change', validateForm);
+
+        // Validation initiale
+        validateForm();
+    </script>
+</body>
+</html>

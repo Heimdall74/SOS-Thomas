@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Comptes - SOS Thomas{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex justify-between items-center mb-8">
+        <h2 class="text-3xl font-bold text-gray-800">Suivi des comptes</h2>
+        <a href="{{ url_for('dashboard') }}" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+            <i class="fas fa-arrow-left mr-2"></i>Retour
+        </a>
+    </div>
+    
+    <div class="bg-white rounded-xl shadow-md p-6">
+        <form method="POST" action="{{ url_for('add_account') }}" class="mb-6">
+            {{ form.hidden_tag() }}
+            <div class="flex flex-wrap gap-4">
+                {{ form.name(class="border rounded px-3 py-2") }}
+                {{ form.email(class="border rounded px-3 py-2") }}
+                <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                    <i class="fas fa-user-plus mr-2"></i>Ajouter
+                </button>
+            </div>
+        </form>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for account in data.accounts %}
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-800">{{ account.name }}</h4>
+                    <p class="text-sm text-gray-600 mb-3">{{ account.email }}</p>
+                    <div class="flex justify-between items-center">
+                        <button onclick="alert('Compte: {{ account.name }}\\nEmail: {{ account.email }}\\nCréé le: {{ account.created_at[:10] if account.created_at else 'N/A' }}')" 
+                                class="text-blue-500 hover:text-blue-700">
+                            <i class="fas fa-external-link-alt mr-1"></i>Voir
+                        </button>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs text-gray-500">
+                                {{ account.created_at[:10] if account.created_at else 'N/A' }}
+                            </span>
+                            <a href="{{ url_for('delete_item', item_type='accounts', item_id=account.id) }}" 
+                               class="text-red-500 hover:text-red-700">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="col-span-full text-center py-8">
+                    <p class="text-gray-500">Aucun compte enregistré</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

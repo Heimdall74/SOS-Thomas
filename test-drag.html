@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TEST DRAG & DROP ISOLÉ</title>
+    <style>
+        .task-card {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px;
+            cursor: grab;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .kanban-column {
+            background: #f3f4f6;
+            border: 2px solid #d1d5db;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px;
+            min-height: 200px;
+            width: 300px;
+            display: inline-block;
+            vertical-align: top;
+        }
+        .kanban-column.drag-over {
+            background: #dbeafe;
+            border-color: #3b82f6;
+        }
+        .column-header {
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #1f2937;
+            color: white;
+            border-radius: 4px;
+        }
+        h1 { color: #1f2937; }
+        .debug {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #10b981;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+    <h1>TEST DRAG & DROP ISOLÉ</h1>
+    
+    <div class="debug" id="debug">INITIALISATION...</div>
+    
+    <div class="kanban-column">
+        <div class="column-header">À FAIRE</div>
+        <div class="task-list" id="todo-list">
+            <div class="task-card" data-task-id="test1" style="background: #fef3c7;">
+                <strong>Tâche 1 - DRAG MOI!</strong><br>
+                <small>Cliquez et déplacez-moi</small>
+            </div>
+            <div class="task-card" data-task-id="test2" style="background: #dbeafe;">
+                <strong>Tâche 2 - TEST DRAG</strong><br>
+                <small>Autre tâche pour tester</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="kanban-column">
+        <div class="column-header">EN COURS</div>
+        <div class="task-list" id="progress-list">
+        </div>
+    </div>
+    
+    <div class="kanban-column">
+        <div class="column-header">TERMINÉ</div>
+        <div class="task-list" id="done-list">
+        </div>
+    </div>
+
+    <script>
+        console.log('PAGE CHARGEE - INITIALISATION DU DRAG & DROP');
+        
+        var isDragging = false;
+        var selectedElement = null;
+        var startX = 0;
+        var startY = 0;
+        
+        function initDragDrop() {
+            var taskCards = document.querySelectorAll('.task-card');
+            console.log('TACHES TROUVEES: ' + taskCards.length);
+            
+            document.getElementById('debug').textContent = 'TACHES: ' + taskCards.length + ' - DRAG & DROP OK!';
+            
+            taskCards.forEach(function(card) {
+                card.addEventListener('mousedown', function(e) {
+                    console.log('MOUSE DOWN SUR: ' + card.dataset.taskId);
+                    
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    selectedElement = card;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    isDragging = false;
+                    
+                    card.style.cursor = 'grabbing';
+                    card.style.transform = 'scale(1.1) rotate(2deg)';
+                    card.style.boxShadow = '0 10px 30px rgba(0,0,0,0.3)';
+                    card.style.zIndex = '1000';
+                    
+                    document.getElementById('debug').textContent = 'DRAG PRET - TACHE: ' + card.dataset.taskId;
+                    console.log('TACHE PRETE POUR LE DRAG!');
+                });
+                
+                card.addEventListener('click', function(e) {
+                    if (!isDragging) {
+                        console.log('CLICK SIMPLE - EDITION');
+                        document.getElementById('debug').textContent = 'CLICK SIMPLE - MODE EDITION';
+                    }
+                });
+            });
+            
+            document.addEventListener('mousemove', function(e) {
+                if (selectedElement && !isDragging) {
+                    var deltaX = Math.abs(e.clientX - startX);
+                    var deltaY = Math.abs(e.clientY - startY);
+                    
+                    if (deltaX > 5 || deltaY > 5) {
+                        console.log('DEBUT DU DRAG!');
+                        isDragging = true;
+                        
+                        document.getElementById('debug').textContent = 'DRAG EN COURS!';
+                        console.log('DRAG COMMENCE!');
+                        
+                        selectedElement.style.opacity = '0.5';
+                    }
+                }
+                
+                if (isDragging && selectedElement) {
+                    // Optionnel: déplacer visuellement l'élément
+                    console.log('DRAG EN COURS...');
+                }
+            });
+            
+            document.addEventListener('mouseup', function(e) {
+                if (selectedElement) {
+                    console.log('MOUSE UP - FIN DU DRAG');
+                    
+                    if (isDragging) {
+                        // Trouver la colonne cible
+                        var targetColumn = document.elementFromPoint(e.clientX, e.clientY);
+                        targetColumn = targetColumn.closest('.kanban-column');
+                        
+                        if (targetColumn) {
+                            var taskList = targetColumn.querySelector('.task-list');
+                            if (taskList && taskList !== selectedElement.parentNode) {
+                                taskList.appendChild(selectedElement);
+                                document.getElementById('debug').textContent = 'TACHE DEPLACEE AVEC SUCCES!';
+                                console.log('TACHE DEPLACEE AVEC SUCCES!');
+                            }
+                        }
+                    }
+                    
+                    // Restaurer le style
+                    selectedElement.style.cursor = 'grab';
+                    selectedElement.style.transform = '';
+                    selectedElement.style.boxShadow = '';
+                    selectedElement.style.zIndex = '';
+                    selectedElement.style.opacity = '1';
+                    
+                    selectedElement = null;
+                    isDragging = false;
+                }
+            });
+        }
+        
+        // Initialiser après le chargement
+        setTimeout(initDragDrop, 500);
+    </script>
+</body>
+</html>

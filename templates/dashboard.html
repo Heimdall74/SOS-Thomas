@@ -1,0 +1,1703 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - SOS Thomas{% endblock %}
+
+{% block content %}
+<!-- Dashboard Content -->
+        <div class="dashboard-content">
+            <div class="dashboard-header">
+                <h1 class="dashboard-title">Tableau de bord</h1>
+                <p class="dashboard-subtitle">Bienvenue sur votre espace personnel</p>
+            </div>
+            
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-icon blue">📅</div>
+                    </div>
+                    <div class="stat-value">{{ data.events|length }}</div>
+                    <div class="stat-label">Événements</div>
+                    <div class="stat-change positive">+12% ce mois</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-icon green">✅</div>
+                    </div>
+                    <div class="stat-value">{{ data.tasks|length }}</div>
+                    <div class="stat-label">Tâches</div>
+                    <div class="stat-change positive">+8% cette semaine</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-icon orange">📊</div>
+                    </div>
+                    <div class="stat-value">{{ data.projects|length }}</div>
+                    <div class="stat-label">Projets</div>
+                    <div class="stat-change negative">-3% ce mois</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-icon purple">📝</div>
+                    </div>
+                    <div class="stat-value">{{ data.notes|length }}</div>
+                    <div class="stat-label">Notes</div>
+                    <div class="stat-change positive">+15% cette semaine</div>
+                </div>
+            </div>
+            
+            <!-- Widgets Grid -->
+            <div class="widgets-grid">
+                <!-- Tasks Widget -->
+                <div class="widget" data-widget-type="tasks">
+                    <div class="widget-header">
+                        <h3 class="widget-title">Tâches récentes</h3>
+                        <div style="position: relative;">
+                            <button class="widget-menu" onclick="toggleWidgetMenu(this)">⋮</button>
+                            <div class="widget-dropdown">
+                                <div class="widget-dropdown-item" onclick="changeWidget('tasks', this)">Tâches récentes</div>
+                                <div class="widget-dropdown-item" onclick="changeWidget('agenda', this)">Agenda</div>
+                                <div class="widget-dropdown-item" onclick="changeWidget('projets', this)">Projets</div>
+                                <div class="widget-dropdown-item" onclick="changeWidget('mails', this)">Mails</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="widget-content">
+                        <div class="task-list">
+                            {% for task in data.tasks[:4] %}
+                            <div class="task-item">
+                                <div class="task-checkbox {% if task.completed %}checked{% endif %}"></div>
+                                <div class="task-text {% if task.completed %}completed{% endif %}">{{ task.name }}</div>
+                                <div class="task-priority {{ task.priority }}">{{ task.priority }}</div>
+                            </div>
+                            {% endfor %}
+                            {% if data.tasks|length == 0 %}
+                            <div class="task-item">
+                                <div class="task-text">Aucune tâche pour le moment</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Chart Widget -->
+                <div class="widget" data-widget-type="chart">
+                    <div class="widget-header">
+                        <h3 class="widget-title">Activité cette semaine</h3>
+                        <div style="position: relative;">
+                            <button class="widget-menu" onclick="toggleWidgetMenu(this)">⋮</button>
+                            <div class="widget-dropdown">
+                                <div class="widget-dropdown-item" onclick="changeWidget('chart', this)">Activité cette semaine</div>
+                                <div class="widget-dropdown-item" onclick="changeWidget('agenda', this)">Agenda</div>
+                                <div class="widget-dropdown-item" onclick="changeWidget('projets', this)">Projets</div>
+                                <div class="widget-dropdown-item" onclick="changeWidget('mails', this)">Mails</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="widget-content">
+                        <div class="chart-container">
+                            <div class="chart-bar" style="height: 60%"></div>
+                            <div class="chart-bar" style="height: 80%"></div>
+                            <div class="chart-bar" style="height: 45%"></div>
+                            <div class="chart-bar" style="height: 90%"></div>
+                            <div class="chart-bar" style="height: 70%"></div>
+                            <div class="chart-bar" style="height: 85%"></div>
+                            <div class="chart-bar" style="height: 40%"></div>
+                        </div>
+                        <div class="chart-labels">
+                            <span>Lun</span>
+                            <span>Mar</span>
+                            <span>Mer</span>
+                            <span>Jeu</span>
+                            <span>Ven</span>
+                            <span>Sam</span>
+                            <span>Dim</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Activity Feed Widget -->
+                <div class="widget" data-widget-type="activity">
+                    <div class="widget-header">
+                        <h3 class="widget-title">Activité récente</h3>
+                        <div style="position: relative;">
+                            <button class="widget-menu" onclick="toggleWidgetMenu(this)">⋮</button>
+                            <div class="widget-dropdown">
+                                <div class="widget-dropdown-item" onclick="changeWidget('activity', this)">Activité récente</div>
+                                <div class="widget-dropdown-item" onclick="changeWidget('agenda', this)">Agenda</div>
+                                <div class="widget-dropdown-item" onclick="changeWidget('projets', this)">Projets</div>
+                                <div class="widget-dropdown-item" onclick="changeWidget('mails', this)">Mails</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="widget-content">
+                        <div class="activity-feed">
+                            <div class="activity-item">
+                                <div class="activity-icon" style="background: #fce4ec; color: #ec4899;">📅</div>
+                                <div class="activity-content">
+                                    <div class="activity-title">Nouvel événement ajouté</div>
+                                    <div class="activity-time">Il y a 2 heures</div>
+                                </div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-icon" style="background: #fbcfe8; color: #be185d;">✅</div>
+                                <div class="activity-content">
+                                    <div class="activity-title">Tâche complétée</div>
+                                    <div class="activity-time">Il y a 4 heures</div>
+                                </div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-icon" style="background: #fce4ec; color: #ec4899;">📝</div>
+                                <div class="activity-content">
+                                    <div class="activity-title">Note créée</div>
+                                    <div class="activity-time">Il y a 6 heures</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Raccourcis rapides -->
+            <div class="shortcuts-section">
+                <h2 class="shortcuts-title">Raccourcis rapides</h2>
+                <div class="shortcuts-grid">
+                    <a href="{{ url_for('agenda') }}" class="shortcut-card">
+                        <div class="shortcut-icon agenda-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="shortcut-info">
+                            <h3>Agenda</h3>
+                            <p>{{ data.events|length }} événements</p>
+                        </div>
+                    </a>
+                    
+                    <a href="{{ url_for('taches') }}" class="shortcut-card">
+                        <div class="shortcut-icon tasks-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="shortcut-info">
+                            <h3>Tâches</h3>
+                            <p>{{ data.tasks|length }} tâches</p>
+                        </div>
+                    </a>
+                    
+                    <a href="{{ url_for('projets') }}" class="shortcut-card">
+                        <div class="shortcut-icon projects-icon">
+                            <i class="fas fa-project-diagram"></i>
+                        </div>
+                        <div class="shortcut-info">
+                            <h3>Projets</h3>
+                            <p>{{ data.projects|length }} projets</p>
+                        </div>
+                    </a>
+                    
+                    <a href="{{ url_for('notes') }}" class="shortcut-card">
+                        <div class="shortcut-icon notes-icon">
+                            <i class="fas fa-sticky-note"></i>
+                        </div>
+                        <div class="shortcut-info">
+                            <h3>Notes</h3>
+                            <p>{{ data.notes|length }} notes</p>
+                        </div>
+                    </a>
+                    
+                    <a href="{{ url_for('mails') }}" class="shortcut-card">
+                        <div class="shortcut-icon mails-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <div class="shortcut-info">
+                            <h3>Mails</h3>
+                            <p>{{ data.mails|length }} mails</p>
+                        </div>
+                    </a>
+                    
+                    <a href="{{ url_for('medias') }}" class="shortcut-card">
+                        <div class="shortcut-icon medias-icon">
+                            <i class="fas fa-photo-video"></i>
+                        </div>
+                        <div class="shortcut-info">
+                            <h3>Médias</h3>
+                            <p>{{ data.photos|length if data.photos else 0 }} médias</p>
+                        </div>
+                    </a>
+                    
+                    <a href="{{ url_for('reunion') }}" class="shortcut-card">
+                        <div class="shortcut-icon meetings-icon">
+                            <i class="fas fa-video"></i>
+                        </div>
+                        <div class="shortcut-info">
+                            <h3>Réunions</h3>
+                            <p>{{ data.meetings|length if data.meetings else 0 }} réunions</p>
+                        </div>
+                    </a>
+                    
+                    <a href="{{ url_for('musique') }}" class="shortcut-card">
+                        <div class="shortcut-icon music-icon">
+                            <i class="fas fa-music"></i>
+                        </div>
+                        <div class="shortcut-info">
+                            <h3>Musique</h3>
+                            <p>Bibliothèque</p>
+                        </div>
+                    </a>
+                    
+                    <a href="{{ url_for('liens') }}" class="shortcut-card">
+                        <div class="shortcut-icon links-icon">
+                            <i class="fas fa-link"></i>
+                        </div>
+                        <div class="shortcut-info">
+                            <h3>Liens</h3>
+                            <p>{{ data.links|length }} liens</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Global variable to store widget data
+let widgetData = {};
+
+// Load widget data from API
+async function loadWidgetData() {
+    try {
+        const response = await fetch('/api/widget-data');
+        widgetData = await response.json();
+    } catch (error) {
+        console.error('Error loading widget data:', error);
+    }
+}
+
+// Toggle mobile menu
+function toggleSidebar() {
+    document.querySelector('.sidebar').classList.toggle('open');
+}
+
+// Toggle widget dropdown menu
+function toggleWidgetMenu(button) {
+    const dropdown = button.nextElementSibling;
+    
+    // Close all other dropdowns
+    document.querySelectorAll('.widget-dropdown').forEach(d => {
+        if (d !== dropdown) {
+            d.classList.remove('show');
+        }
+    });
+    
+    dropdown.classList.toggle('show');
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.widget-menu')) {
+        document.querySelectorAll('.widget-dropdown').forEach(d => {
+            d.classList.remove('show');
+        });
+    }
+});
+
+// Change widget content
+function changeWidget(widgetType, menuItem) {
+    const widget = menuItem.closest('.widget');
+    const widgetContent = widget.querySelector('.widget-content');
+    const widgetTitle = widget.querySelector('.widget-title');
+    
+    // Update title
+    const titles = {
+        'tasks': 'Tâches récentes',
+        'agenda': 'Agenda',
+        'projets': 'Projets',
+        'mails': 'Mails récents',
+        'chart': 'Activité cette semaine',
+        'activity': 'Activité récente'
+    };
+    widgetTitle.textContent = titles[widgetType];
+    
+    // Update content based on widget type
+    switch(widgetType) {
+        case 'agenda':
+            widgetContent.innerHTML = getAgendaWidget();
+            break;
+        case 'projets':
+            widgetContent.innerHTML = getProjetsWidget();
+            break;
+        case 'mails':
+            widgetContent.innerHTML = getMailsWidget();
+            break;
+        case 'tasks':
+            widgetContent.innerHTML = getTasksWidget();
+            break;
+        case 'chart':
+            widgetContent.innerHTML = getChartWidget();
+            break;
+        case 'activity':
+            widgetContent.innerHTML = getActivityWidget();
+            break;
+    }
+    
+    // Update widget type
+    widget.setAttribute('data-widget-type', widgetType);
+    
+    // Close dropdown
+    menuItem.closest('.widget-dropdown').classList.remove('show');
+}
+
+// Widget templates with real data
+function getAgendaWidget() {
+    const today = new Date().getDate();
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 
+                    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    
+    // Get events from widgetData
+    const events = widgetData.events || [];
+    const eventDays = events.map(event => new Date(event.date).getDate());
+    
+    // Generate calendar days
+    let calendarDays = '';
+    // Adjust for French calendar (Monday = 0, Sunday = 6)
+    const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+    const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1; // Convert Sunday (0) to 6, shift others
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    
+    // Add empty cells for days before month starts
+    for (let i = 0; i < adjustedFirstDay; i++) {
+        calendarDays += `<div class="calendar-day empty"></div>`;
+    }
+    
+    // Add days of the month
+    for (let i = 1; i <= daysInMonth; i++) {
+        const isToday = i === today;
+        const hasEvent = eventDays.includes(i);
+        let classes = 'calendar-day';
+        if (isToday) classes += ' today';
+        if (hasEvent) classes += ' has-event';
+        
+        const eventForDay = events.find(e => new Date(e.date).getDate() === i);
+        const eventTitle = eventForDay ? eventForDay.title : '';
+        
+        calendarDays += `<div class="${classes}" onclick="window.location.href='/agenda'" title="${eventTitle}" style="cursor: pointer;">${i}</div>`;
+    }
+    
+    return `
+        <div class="widget-agenda">
+            <div class="calendar-header">${monthNames[currentMonth]} ${currentYear}</div>
+            <div class="mini-calendar">
+                <div class="calendar-weekdays">
+                    <div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div><div>D</div>
+                </div>
+                <div class="calendar-days-grid">
+                    ${calendarDays}
+                </div>
+            </div>
+            <div style="margin-top: 1rem; text-align: center;">
+                <a href="/agenda" class="feature-btn" style="display: inline-block;">Voir l'agenda complet</a>
+            </div>
+        </div>
+    `;
+}
+
+function getProjetsWidget() {
+    const projects = widgetData.projects || [];
+    
+    // Sort by last updated (most recent first)
+    const sortedProjects = projects.sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
+    
+    let projectsHtml = '';
+    sortedProjects.slice(0, 4).forEach(project => {
+        // Use real progress from data, not hardcoded
+        const progress = project.progress || 0;
+        
+        projectsHtml += `
+            <div class="projet-item">
+                <div style="flex: 1;">
+                    <div style="font-weight: 500; margin-bottom: 0.5rem;">${project.name}</div>
+                    <div class="projet-progress">
+                        <div class="projet-progress-bar" style="width: ${progress}%;"></div>
+                    </div>
+                </div>
+                <div style="font-weight: 600; color: #667eea;">${progress}%</div>
+                <div style="margin-top: 0.25rem;">
+                    <a href="/project/${project.id}" class="feature-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">Voir</a>
+                </div>
+            </div>
+        `;
+    });
+    
+    return `
+        <div class="widget-projets-list">
+            ${projectsHtml || '<p style="text-align: center; color: #64748b;">Aucun projet</p>'}
+        </div>
+        <div style="margin-top: 1rem; text-align: center;">
+            <a href="/projets" class="feature-btn" style="display: inline-block;">Voir tous les projets</a>
+        </div>
+    `;
+}
+
+function getMailsWidget() {
+    const mails = widgetData.mails || [];
+    
+    let mailsHtml = '';
+    mails.forEach(mail => {
+        const initials = mail.from ? mail.from.substring(0, 2).toUpperCase() : 'NA';
+        const time = mail.created_at ? new Date(mail.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+        
+        mailsHtml += `
+            <div class="mail-item">
+                <div class="mail-avatar">${initials}</div>
+                <div class="mail-content">
+                    <div class="mail-from">${mail.from || 'Expéditeur inconnu'}</div>
+                    <div class="mail-subject">${mail.subject || 'Sans sujet'}</div>
+                </div>
+                <div class="mail-time">${time}</div>
+            </div>
+        `;
+    });
+    
+    return `
+        <div class="widget-mails-list">
+            ${mailsHtml || '<p style="text-align: center; color: #64748b;">Aucun mail</p>'}
+            <div style="margin-top: 1rem; text-align: center;">
+                <a href="/mails" class="feature-btn" style="display: inline-block;">Voir tous les mails</a>
+            </div>
+        </div>
+    `;
+}
+
+function getTasksWidget() {
+    const tasks = widgetData.tasks || [];
+    
+    // Sort by most recently updated (created or updated)
+    const sortedTasks = tasks.sort((a, b) => {
+        const dateA = new Date(a.updated_at || a.created_at);
+        const dateB = new Date(b.updated_at || b.created_at);
+        return dateB - dateA; // Most recent first
+    });
+    
+    let tasksHtml = '';
+    
+    // Separate recently created/modified from older tasks
+    const recentTasks = sortedTasks.slice(0, 5);
+    const olderTasks = sortedTasks.slice(5);
+    
+    // Display recent tasks with emphasis
+    if (recentTasks.length > 0) {
+        tasksHtml += '<div class="recent-tasks-section"><h4>📋 Tâches récentes</h4>';
+        recentTasks.forEach(task => {
+            const priorityClass = task.priority || 'medium';
+            const isCompleted = task.completed || task.status === 'réalisée';
+            const isRecent = isRecentlyModified(task);
+            
+            tasksHtml += `
+                <div class="task-item ${isRecent ? 'recent' : ''}">
+                    <div class="task-checkbox ${isCompleted ? 'checked' : ''}" onclick="toggleTaskComplete(this, '${task.id}')"></div>
+                    <div class="task-text ${isCompleted ? 'completed' : ''}">${task.name || 'Tâche sans nom'}</div>
+                    <div class="task-priority ${priorityClass}">${priorityClass}</div>
+                    ${isRecent ? '<div class="recent-badge">Récent</div>' : ''}
+                </div>
+            `;
+        });
+        tasksHtml += '</div>';
+    }
+    
+    // Display older tasks
+    if (olderTasks.length > 0) {
+        tasksHtml += '<div class="older-tasks-section"><h4>Tâches précédentes</h4>';
+        olderTasks.slice(0, 3).forEach(task => {
+            const priorityClass = task.priority || 'medium';
+            const isCompleted = task.completed || task.status === 'réalisée';
+            
+            tasksHtml += `
+                <div class="task-item older">
+                    <div class="task-checkbox ${isCompleted ? 'checked' : ''}" onclick="toggleTaskComplete(this, '${task.id}')"></div>
+                    <div class="task-text ${isCompleted ? 'completed' : ''}">${task.name || 'Tâche sans nom'}</div>
+                    <div class="task-priority ${priorityClass}">${priorityClass}</div>
+                </div>
+            `;
+        });
+        
+        if (olderTasks.length > 3) {
+            tasksHtml += `<div style="text-align: center; margin-top: 1rem;">
+                <a href="/taches" class="feature-btn">Voir toutes les tâches</a>
+            </div>`;
+        }
+        tasksHtml += '</div>';
+    }
+    
+    return `
+        <div class="task-list">
+            ${tasksHtml || '<p style="text-align: center; color: #64748b;">Aucune tâche</p>'}
+            <div style="margin-top: 1rem; text-align: center;">
+                <a href="/taches" class="feature-btn" style="display: inline-block;">Voir toutes les tâches</a>
+            </div>
+        </div>
+    `;
+}
+
+function getChartWidget() {
+    return `
+        <div class="chart-container">
+            <div class="chart-bar" style="height: 60%"></div>
+            <div class="chart-bar" style="height: 80%"></div>
+            <div class="chart-bar" style="height: 45%"></div>
+            <div class="chart-bar" style="height: 90%"></div>
+            <div class="chart-bar" style="height: 70%"></div>
+            <div class="chart-bar" style="height: 85%"></div>
+            <div class="chart-bar" style="height: 40%"></div>
+        </div>
+        <div class="chart-labels">
+            <span>Lun</span>
+            <span>Mar</span>
+            <span>Mer</span>
+            <span>Jeu</span>
+            <span>Ven</span>
+            <span>Sam</span>
+            <span>Dim</span>
+        </div>
+    `;
+}
+
+// Helper function to check if task was recently modified (within last 24 hours)
+function isRecentlyModified(task) {
+    const now = new Date();
+    const taskDate = new Date(task.updated_at || task.created_at);
+    const hoursDiff = (now - taskDate) / (1000 * 60 * 60);
+    return hoursDiff < 24;
+}
+
+function getActivityWidget() {
+    return `
+        <div class="activity-feed">
+            <div class="activity-item">
+                <div class="activity-icon" style="background: #fce4ec; color: #ec4899;">📅</div>
+                <div class="activity-content">
+                    <div class="activity-title">Nouvel événement ajouté</div>
+                    <div class="activity-time">Il y a 2 heures</div>
+                </div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-icon" style="background: #fbcfe8; color: #be185d;">✅</div>
+                <div class="activity-content">
+                    <div class="activity-title">Tâche complétée</div>
+                    <div class="activity-time">Il y a 4 heures</div>
+                </div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-icon" style="background: #fce4ec; color: #ec4899;">📝</div>
+                <div class="activity-content">
+                    <div class="activity-title">Note créée</div>
+                    <div class="activity-time">Il y a 6 heures</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Toggle task completion
+async function toggleTaskComplete(checkbox, taskId) {
+    checkbox.classList.toggle('checked');
+    const taskText = checkbox.nextElementSibling;
+    taskText.classList.toggle('completed');
+    
+    try {
+        await fetch(`/api/toggle-task/${taskId}`, { method: 'POST' });
+        // Reload data to keep it in sync
+        await loadWidgetData();
+    } catch (error) {
+        console.error('Error toggling task:', error);
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', async function() {
+    await loadWidgetData();
+    
+    // Re-initialize task checkboxes
+    document.querySelectorAll('.task-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('click', function() {
+            const taskId = this.getAttribute('data-task-id');
+            if (taskId) {
+                toggleTaskComplete(this, taskId);
+            } else {
+                this.classList.toggle('checked');
+                const taskText = this.nextElementSibling;
+                taskText.classList.toggle('completed');
+            }
+        });
+    });
+});
+
+// Theme functionality
+function toggleThemeMenu() {
+    const dropdown = document.getElementById('theme-dropdown');
+    const isOpen = dropdown.classList.contains('show');
+    
+    // Close dropdown if open
+    if (isOpen) {
+        dropdown.classList.remove('show');
+    } else {
+        // Close other dropdowns
+        document.querySelectorAll('.widget-dropdown').forEach(d => {
+            d.classList.remove('show');
+        });
+        document.getElementById('search-suggestions').classList.remove('show');
+        document.getElementById('notifications-dropdown').classList.remove('show');
+        
+        // Open theme dropdown
+        dropdown.classList.add('show');
+    }
+}
+
+function changeTheme(themeName) {
+    // Track base theme for dark mode
+    if (!themeName.includes('-dark')) {
+        currentBaseTheme = themeName;
+    }
+    
+    const themes = {
+        reve: {
+            sidebar: '#fffbeb',
+            sidebarBorder: '#fef3c7',
+            sidebarHeaderBorder: '#fef3c7',
+            sidebarUserBorder: '#fef3c7',
+            sidebarHover: '#fef3c7',
+            dashboardBg: '#fef2f2',
+            widgetBorder: '#fce4ec',
+            widgetHoverBorder: '#f9a8d4',
+            widgetTitle: '#be185d',
+            widgetMenuBg: '#fce4ec',
+            widgetMenuHover: '#fbcfe8',
+            taskCheckbox: '#f9a8d4',
+            taskCheckboxChecked: 'linear-gradient(135deg, #f9a8d4, #ec4899)',
+            chartBar: 'linear-gradient(to top, #f9a8d4, #ec4899)',
+            activityIcon1: '#fce4ec',
+            activityIcon1Color: '#ec4899',
+            activityIcon2: '#fbcfe8',
+            activityIcon2Color: '#be185d',
+            textPrimary: '#1e293b',
+            textSecondary: '#475569',
+            textMuted: '#64748b',
+            textDark: '#0f172a'
+        },
+        serieux: {
+            sidebar: '#1e3a8a',
+            sidebarBorder: '#1e40af',
+            sidebarHeaderBorder: '#1e40af',
+            sidebarUserBorder: '#1e40af',
+            sidebarHover: '#1e40af',
+            dashboardBg: '#f8fafc',
+            widgetBorder: '#e2e8f0',
+            widgetHoverBorder: '#cbd5e1',
+            widgetTitle: '#1e293b',
+            widgetMenuBg: '#f1f5f9',
+            widgetMenuHover: '#e2e8f0',
+            taskCheckbox: '#cbd5e1',
+            taskCheckboxChecked: 'linear-gradient(135deg, #3b82f6, #1e40af)',
+            chartBar: 'linear-gradient(to top, #3b82f6, #1e40af)',
+            activityIcon1: '#eff6ff',
+            activityIcon1Color: '#3b82f6',
+            activityIcon2: '#dbeafe',
+            activityIcon2Color: '#2563eb',
+            textPrimary: '#0f172a',
+            textSecondary: '#334155',
+            textMuted: '#64748b',
+            textDark: '#020617'
+        },
+        nature: {
+            sidebar: '#f0fdf4',
+            sidebarBorder: '#dcfce7',
+            sidebarHeaderBorder: '#dcfce7',
+            sidebarUserBorder: '#dcfce7',
+            sidebarHover: '#dcfce7',
+            dashboardBg: '#fef3c7',
+            widgetBorder: '#dcfce7',
+            widgetHoverBorder: '#bbf7d0',
+            widgetTitle: '#166534',
+            widgetMenuBg: '#dcfce7',
+            widgetMenuHover: '#bbf7d0',
+            taskCheckbox: '#bbf7d0',
+            taskCheckboxChecked: 'linear-gradient(135deg, #10b981, #059669)',
+            chartBar: 'linear-gradient(to top, #10b981, #059669)',
+            activityIcon1: '#dcfce7',
+            activityIcon1Color: '#10b981',
+            activityIcon2: '#bbf7d0',
+            activityIcon2Color: '#059669',
+            textPrimary: '#0f172a',
+            textSecondary: '#1e293b',
+            textMuted: '#475569',
+            textDark: '#020617'
+        },
+        ocean: {
+            sidebar: '#0891b2',
+            sidebarBorder: '#0e7490',
+            sidebarHeaderBorder: '#0e7490',
+            sidebarUserBorder: '#0e7490',
+            sidebarHover: '#0e7490',
+            dashboardBg: '#ecfeff',
+            widgetBorder: '#cffafe',
+            widgetHoverBorder: '#a5f3fc',
+            widgetTitle: '#164e63',
+            widgetMenuBg: '#cffafe',
+            widgetMenuHover: '#a5f3fc',
+            taskCheckbox: '#a5f3fc',
+            taskCheckboxChecked: 'linear-gradient(135deg, #06b6d4, #0891b2)',
+            chartBar: 'linear-gradient(to top, #06b6d4, #0891b2)',
+            activityIcon1: '#cffafe',
+            activityIcon1Color: '#06b6d4',
+            activityIcon2: '#a5f3fc',
+            activityIcon2Color: '#0891b2',
+            textPrimary: '#0f172a',
+            textSecondary: '#1e293b',
+            textMuted: '#475569',
+            textDark: '#020617'
+        }
+    };
+    
+    const theme = themes[themeName];
+    if (!theme) return;
+    
+    // Apply theme colors
+    applyThemeColors(theme);
+    
+    // Save theme preference
+    localStorage.setItem('selectedTheme', themeName);
+    
+    // Close dropdown
+    document.getElementById('theme-dropdown').classList.remove('show');
+    
+    // Show feedback
+    showThemeFeedback(themeName);
+}
+
+function applyThemeColors(theme) {
+    // Create or update theme CSS
+    let themeStyle = document.getElementById('theme-style');
+    if (!themeStyle) {
+        themeStyle = document.createElement('style');
+        themeStyle.id = 'theme-style';
+        document.head.appendChild(themeStyle);
+    }
+    
+    themeStyle.textContent = `
+        .sidebar { background: ${theme.sidebar} !important; }
+        .sidebar { border-right-color: ${theme.sidebarBorder} !important; }
+        .sidebar-header { border-bottom-color: ${theme.sidebarHeaderBorder} !important; }
+        .user-profile { border-bottom-color: ${theme.sidebarUserBorder} !important; }
+        .nav-item:hover { background: ${theme.sidebarHover} !important; }
+        .dashboard-content { background: ${theme.dashboardBg} !important; }
+        .widget { border-color: ${theme.widgetBorder} !important; }
+        .widget:hover { border-color: ${theme.widgetHoverBorder} !important; }
+        .widget-title { color: ${theme.widgetTitle} !important; }
+        .widget-menu { background: ${theme.widgetMenuBg} !important; }
+        .widget-menu:hover { background: ${theme.widgetMenuHover} !important; }
+        .task-checkbox { border-color: ${theme.taskCheckbox} !important; }
+        .task-checkbox.checked { 
+            background: ${theme.taskCheckboxChecked} !important; 
+            border-color: transparent !important;
+        }
+        .chart-bar { background: ${theme.chartBar} !important; }
+        
+        /* Sidebar text colors - darker for better visibility on dark backgrounds */
+        .logo { color: ${theme.sidebar === '#0f172a' || theme.sidebar === '#1e3a8a' || theme.sidebar === '#0891b2' || theme.sidebar === '#0c1e3d' || theme.sidebar === '#083344' || theme.sidebar === '#14532d' || theme.sidebar === '#7c2d12' ? (theme.sidebar === '#0891b2' ? '#ffffff' : '#cbd5e1') : theme.textDark} !important; font-weight: 700 !important; }
+        .user-details h3 { color: ${theme.sidebar === '#0f172a' || theme.sidebar === '#1e3a8a' || theme.sidebar === '#0891b2' || theme.sidebar === '#0c1e3d' || theme.sidebar === '#083344' || theme.sidebar === '#14532d' || theme.sidebar === '#7c2d12' ? (theme.sidebar === '#0891b2' ? '#ffffff' : '#cbd5e1') : theme.textDark} !important; font-weight: 600 !important; }
+        .user-details p { color: ${theme.sidebar === '#0f172a' || theme.sidebar === '#1e3a8a' || theme.sidebar === '#0891b2' || theme.sidebar === '#0c1e3d' || theme.sidebar === '#083344' || theme.sidebar === '#14532d' || theme.sidebar === '#7c2d12' ? (theme.sidebar === '#0891b2' ? '#f8fafc' : '#64748b') : theme.textSecondary} !important; }
+        .nav-item { color: ${theme.sidebar === '#0f172a' || theme.sidebar === '#1e3a8a' || theme.sidebar === '#0891b2' || theme.sidebar === '#0c1e3d' || theme.sidebar === '#083344' || theme.sidebar === '#14532d' || theme.sidebar === '#7c2d12' ? (theme.sidebar === '#0891b2' ? '#f8fafc' : '#64748b') : theme.textSecondary} !important; font-weight: 500 !important; }
+        .nav-item.active { color: ${theme.sidebar === '#0f172a' || theme.sidebar === '#1e3a8a' || theme.sidebar === '#0891b2' || theme.sidebar === '#0c1e3d' || theme.sidebar === '#083344' || theme.sidebar === '#14532d' || theme.sidebar === '#7c2d12' ? (theme.sidebar === '#0891b2' ? '#374151' : '#cbd5e1') : theme.textDark} !important; font-weight: 600 !important; }
+        .nav-item:hover { color: ${theme.sidebar === '#0f172a' || theme.sidebar === '#1e3a8a' || theme.sidebar === '#0891b2' || theme.sidebar === '#0c1e3d' || theme.sidebar === '#083344' || theme.sidebar === '#14532d' || theme.sidebar === '#7c2d12' ? (theme.sidebar === '#0891b2' ? '#ffffff' : '#cbd5e1') : theme.textDark} !important; }
+        
+        /* Dashboard and widget text colors - keep dark for contrast */
+        .dashboard-title { color: ${theme.textDark} !important; font-weight: 700 !important; }
+        .dashboard-subtitle { color: ${theme.textSecondary} !important; }
+        .stat-label { color: ${theme.textSecondary} !important; font-weight: 500 !important; }
+        .stat-change { color: ${theme.textSecondary} !important; }
+        .stat-value { color: ${theme.textDark} !important; font-weight: 700 !important; }
+        .task-text { color: ${theme.textPrimary} !important; font-weight: 500 !important; }
+        .task-text.completed { color: ${theme.textMuted} !important; }
+        .task-priority { color: ${theme.textSecondary} !important; font-weight: 600 !important; }
+        .activity-title { color: ${theme.textPrimary} !important; font-weight: 600 !important; }
+        .activity-time { color: ${theme.textMuted} !important; font-weight: 500 !important; }
+        .activity-description { color: ${theme.textSecondary} !important; }
+        .notification-title { color: ${theme.textPrimary} !important; font-weight: 600 !important; }
+        .notification-description { color: ${theme.textSecondary} !important; }
+        .notification-time { color: ${theme.textMuted} !important; font-weight: 500 !important; }
+        .search-input { color: ${theme.textDark} !important; font-weight: 500 !important; }
+        .search-input::placeholder { color: ${theme.textMuted} !important; }
+        .theme-title { color: ${theme.textDark} !important; font-weight: 600 !important; }
+        .theme-name { color: ${theme.textPrimary} !important; font-weight: 600 !important; }
+        .theme-description { color: ${theme.textSecondary} !important; }
+        
+        /* Dropdown items */
+        .widget-dropdown-item { color: ${theme.textPrimary} !important; font-weight: 500 !important; }
+        .widget-dropdown-item:hover { color: ${theme.textDark} !important; }
+        .search-suggestion-item { color: ${theme.textPrimary} !important; font-weight: 500 !important; }
+        .search-suggestion-item:hover { color: ${theme.textDark} !important; }
+        
+        /* Header elements */
+        .header-actions .icon-button { color: ${theme.textSecondary} !important; }
+        .header-actions .icon-button:hover { color: ${theme.textDark} !important; }
+        .notification-badge { background: ${theme.widgetTitle} !important; color: white !important; }
+        
+        /* Widget-specific text improvements */
+        .widget-content { color: ${theme.textPrimary} !important; }
+        .widget p { color: ${theme.textSecondary} !important; }
+        .widget h4 { color: ${theme.textDark} !important; font-weight: 600 !important; }
+        .widget h3 { color: ${theme.textDark} !important; font-weight: 600 !important; }
+        .widget h2 { color: ${theme.textDark} !important; font-weight: 700 !important; }
+        .widget span { color: ${theme.textSecondary} !important; }
+        .widget div { color: ${theme.textPrimary} !important; }
+        
+        /* Chart labels */
+        .chart-labels span { color: ${theme.textSecondary} !important; font-weight: 500 !important; }
+        
+        /* Task items */
+        .task-item { 
+            color: ${theme.textPrimary} !important; 
+            transition: all 0.2s ease;
+        }
+        .task-item:hover { 
+            color: ${theme.textDark} !important; 
+            transform: translateX(2px);
+        }
+        
+        /* Recent tasks styling */
+        .recent-tasks-section {
+            margin-bottom: 1rem;
+        }
+        .recent-tasks-section h4 {
+            margin-bottom: 0.5rem;
+            color: #1e40af;
+            font-size: 0.875rem;
+        }
+        .task-item.recent {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border-left: 3px solid #1e40af;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 2px 4px rgba(30, 64, 175, 0.1);
+        }
+        .task-item.recent:hover {
+            transform: translateX(4px) scale(1.02);
+            box-shadow: 0 4px 8px rgba(30, 64, 175, 0.15);
+        }
+        .recent-badge {
+            position: absolute;
+            top: 0.25rem;
+            right: 0.25rem;
+            background: #1e40af;
+            color: white;
+            font-size: 0.625rem;
+            padding: 0.125rem 0.375rem;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+        
+        /* Older tasks styling */
+        .older-tasks-section {
+            border-top: 1px solid #e5e7eb;
+            padding-top: 1rem;
+        }
+        .older-tasks-section h4 {
+            margin: 1rem 0 0.5rem;
+            color: #64748b;
+            font-size: 0.875rem;
+        }
+        .task-item.older {
+            opacity: 0.8;
+        }
+        .task-item.older:hover {
+            opacity: 1;
+            transform: translateX(1px);
+        }
+        
+        /* Activity items */
+        .activity-item { color: ${theme.textPrimary} !important; }
+        .activity-item:hover { color: ${theme.textDark} !important; }
+        
+        /* Feature cards */
+        .feature-card h3 { color: ${theme.textDark} !important; font-weight: 600 !important; }
+        .feature-card p { color: ${theme.textSecondary} !important; }
+        .feature-card .icon { color: ${theme.widgetTitle} !important; }
+        
+        /* Statistics cards */
+        .stat-card h3 { color: ${theme.textDark} !important; font-weight: 700 !important; }
+        .stat-card .stat-label { color: ${theme.textSecondary} !important; font-weight: 500 !important; }
+        .stat-card .stat-change { color: ${theme.textSecondary} !important; }
+        
+        /* Update activity icons in HTML */
+        .activity-item:nth-child(odd) .activity-icon { 
+            background: ${theme.activityIcon1} !important; 
+            color: ${theme.activityIcon1Color} !important; 
+        }
+        .activity-item:nth-child(even) .activity-icon { 
+            background: ${theme.activityIcon2} !important; 
+            color: ${theme.activityIcon2Color} !important; 
+        }
+    `;
+}
+
+function showThemeFeedback(themeName) {
+    const themeNames = {
+        reve: 'Rêve',
+        serieux: 'Sérieux',
+        nature: 'Nature',
+        ocean: 'Océan'
+    };
+    
+    // Create toast notification
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        background: #1e293b;
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 10000;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+    `;
+    toast.textContent = `Thème "${themeNames[themeName]}" appliqué`;
+    document.body.appendChild(toast);
+    
+    // Animate in
+    setTimeout(() => {
+        toast.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 300);
+    }, 3000);
+}
+
+// Dark mode toggle functionality
+let isDarkMode = false;
+let currentBaseTheme = 'reve';
+
+function toggleDarkMode() {
+    console.log('toggleDarkMode called, isDarkMode:', isDarkMode);
+    
+    if (isDarkMode) {
+        // Switch to normal mode
+        console.log('Switching to normal mode');
+        changeTheme(currentBaseTheme);
+        isDarkMode = false;
+        const moonButton = document.querySelector('.icon-button[onclick*="toggleDarkMode"]');
+        if (moonButton) {
+            moonButton.textContent = '🌙';
+        }
+    } else {
+        // Switch to dark mode - apply dark filter to current theme
+        console.log('Switching to dark mode, base theme:', currentBaseTheme);
+        applyDarkFilter(currentBaseTheme);
+        isDarkMode = true;
+        const moonButton = document.querySelector('.icon-button[onclick*="toggleDarkMode"]');
+        if (moonButton) {
+            moonButton.textContent = '☀️';
+        }
+    }
+}
+
+function applyDarkFilter(baseTheme) {
+    const baseThemeData = themes[baseTheme];
+    if (!baseThemeData) return;
+    
+    // Create dark version by applying sophisticated dark filter to pastel colors
+    const darkTheme = {
+        ...baseThemeData,
+        sidebar: adjustColorForDark(baseThemeData.sidebar, 'sidebar'),
+        sidebarBorder: adjustColorForDark(baseThemeData.sidebarBorder, 'border'),
+        sidebarHeaderBorder: adjustColorForDark(baseThemeData.sidebarHeaderBorder, 'border'),
+        sidebarUserBorder: adjustColorForDark(baseThemeData.sidebarUserBorder, 'border'),
+        sidebarHover: adjustColorForDark(baseThemeData.sidebarHover, 'hover'),
+        dashboardBg: adjustColorForDark(baseThemeData.dashboardBg, 'background'),
+        widgetBorder: adjustColorForDark(baseThemeData.widgetBorder, 'widgetBorder'),
+        widgetHoverBorder: adjustColorForDark(baseThemeData.widgetHoverBorder, 'widgetHover'),
+        widgetTitle: adjustColorForDark(baseThemeData.widgetTitle, 'accent'),
+        widgetMenuBg: adjustColorForDark(baseThemeData.widgetMenuBg, 'widgetBg'),
+        widgetMenuHover: adjustColorForDark(baseThemeData.widgetMenuHover, 'widgetHover'),
+        taskCheckbox: adjustColorForDark(baseThemeData.taskCheckbox, 'widgetBorder'),
+        taskCheckboxChecked: adjustGradientForDark(baseThemeData.taskCheckboxChecked),
+        chartBar: adjustGradientForDark(baseThemeData.chartBar),
+        activityIcon1: adjustColorForDark(baseThemeData.activityIcon1, 'widgetBg'),
+        activityIcon1Color: adjustColorForDark(baseThemeData.activityIcon1Color, 'accent'),
+        activityIcon2: adjustColorForDark(baseThemeData.activityIcon2, 'widgetBg'),
+        activityIcon2Color: adjustColorForDark(baseThemeData.activityIcon2Color, 'accent'),
+        textPrimary: adjustColorForDark(baseThemeData.textPrimary, 'textPrimary'),
+        textSecondary: adjustColorForDark(baseThemeData.textSecondary, 'textSecondary'),
+        textMuted: adjustColorForDark(baseThemeData.textMuted, 'textMuted'),
+        textDark: adjustColorForDark(baseThemeData.textDark, 'textDark')
+    };
+    
+    applyThemeColors(darkTheme);
+    localStorage.setItem('selectedTheme', baseTheme + '-dark');
+}
+
+function adjustColorForDark(color, type) {
+    if (!color || !color.startsWith('#')) return color;
+    
+    const hex = color.slice(1);
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    let newR, newG, newB;
+    
+    switch(type) {
+        case 'sidebar':
+            // Dark bluish-gray for sidebars
+            newR = Math.floor(r * 0.15);
+            newG = Math.floor(g * 0.25);
+            newB = Math.floor(b * 0.35);
+            break;
+        case 'background':
+            // Very dark bluish-gray for main background
+            newR = Math.floor(r * 0.08);
+            newG = Math.floor(g * 0.12);
+            newB = Math.floor(b * 0.18);
+            break;
+        case 'widgetBg':
+            // Slightly lighter than main background for cards
+            newR = Math.floor(r * 0.15);
+            newG = Math.floor(g * 0.20);
+            newB = Math.floor(b * 0.28);
+            break;
+        case 'widgetBorder':
+            // Subtle borders
+            newR = Math.floor(r * 0.25);
+            newG = Math.floor(g * 0.30);
+            newB = Math.floor(b * 0.40);
+            break;
+        case 'widgetHover':
+            // Slightly lighter for hover states
+            newR = Math.floor(r * 0.30);
+            newG = Math.floor(g * 0.35);
+            newB = Math.floor(b * 0.45);
+            break;
+        case 'border':
+            // Subtle border color
+            newR = Math.floor(r * 0.30);
+            newG = Math.floor(g * 0.35);
+            newB = Math.floor(b * 0.45);
+            break;
+        case 'hover':
+            // Hover state color
+            newR = Math.floor(r * 0.35);
+            newG = Math.floor(g * 0.40);
+            newB = Math.floor(b * 0.50);
+            break;
+        case 'accent':
+            // Reduce saturation but keep identity for accent colors
+            newR = Math.floor(r * 0.8);
+            newG = Math.floor(g * 0.8);
+            newB = Math.floor(b * 0.9);
+            break;
+        case 'textPrimary':
+            // Off-white for primary text
+            return '#f1f5f9';
+        case 'textSecondary':
+            // Light gray for secondary text
+            return '#cbd5e1';
+        case 'textMuted':
+            // Muted gray for subtle text
+            return '#94a3b8';
+        case 'textDark':
+            // Bright white for important text
+            return '#f8fafc';
+        default:
+            return color;
+    }
+    
+    return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+}
+
+function adjustGradientForDark(gradient) {
+    // Extract colors from gradient and adjust them
+    if (!gradient || !gradient.includes('gradient')) return gradient;
+    
+    const colorMatch = gradient.match(/#[0-9a-f]{6}/gi);
+    if (!colorMatch || colorMatch.length < 2) return gradient;
+    
+    const color1 = adjustColorForDark(colorMatch[0], 'accent');
+    const color2 = adjustColorForDark(colorMatch[1], 'accent');
+    
+    return gradient.replace(colorMatch[0], color1).replace(colorMatch[1], color2);
+}
+
+function darkenColor(color, factor) {
+    // Simple color darkening function
+    if (color.startsWith('#')) {
+        const hex = color.slice(1);
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        
+        const newR = Math.floor(r * factor);
+        const newG = Math.floor(g * factor);
+        const newB = Math.floor(b * factor);
+        
+        return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+    }
+    return color;
+}
+
+function lightenColor(color, factor) {
+    // Simple color lightening function
+    if (color.startsWith('#')) {
+        const hex = color.slice(1);
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        
+        const newR = Math.min(255, Math.floor(r + (255 - r) * factor));
+        const newG = Math.min(255, Math.floor(g + (255 - g) * factor));
+        const newB = Math.min(255, Math.floor(b + (255 - b) * factor));
+        
+        return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+    }
+    return color;
+}
+
+// Load saved theme on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const savedTheme = localStorage.getItem('selectedTheme');
+    if (savedTheme) {
+        if (savedTheme.includes('-dark')) {
+            isDarkMode = true;
+            currentBaseTheme = savedTheme.replace('-dark', '');
+            document.querySelector('.icon-button[onclick="toggleDarkMode()"]').textContent = '☀️';
+            applyDarkFilter(currentBaseTheme);
+        } else {
+            changeTheme(savedTheme);
+        }
+    } else {
+        changeTheme('reve');
+    }
+    
+    renderNotifications();
+});
+
+// Close theme dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.icon-button') && !e.target.closest('.theme-dropdown')) {
+        document.getElementById('theme-dropdown').classList.remove('show');
+    }
+});
+
+// Notifications functionality
+let notifications = [
+    {
+        id: 1,
+        type: 'agenda',
+        title: 'Rappel : Réunion équipe',
+        description: 'Réunion de suivi projet dans 30 minutes',
+        time: 'Il y a 5 min',
+        unread: true,
+        actions: [
+            { text: 'Rejoindre', type: 'primary', url: '/reunion' },
+            { text: 'Plus tard', type: 'secondary', action: 'snooze' }
+        ]
+    },
+    {
+        id: 2,
+        type: 'mail',
+        title: 'Nouveau message reçu',
+        description: 'Jean Dupont : "Mise à jour importante du projet"',
+        time: 'Il y a 15 min',
+        unread: true,
+        actions: [
+            { text: 'Lire', type: 'primary', url: '/mails' },
+            { text: 'Archiver', type: 'secondary', action: 'archive' }
+        ]
+    },
+    {
+        id: 3,
+        type: 'task',
+        title: 'Tâche à compléter',
+        description: 'Finaliser la présentation client pour demain',
+        time: 'Il y a 1 heure',
+        unread: true,
+        actions: [
+            { text: 'Voir', type: 'primary', url: '/taches' },
+            { text: 'Terminer', type: 'secondary', action: 'complete' }
+        ]
+    },
+    {
+        id: 4,
+        type: 'call',
+        title: 'Appel manqué',
+        description: 'Appel manqué de Marie Curie (+33 6 12 34 56 78)',
+        time: 'Il y a 2 heures',
+        unread: false,
+        actions: [
+            { text: 'Rappeler', type: 'primary', action: 'call' },
+            { text: 'Message', type: 'secondary', action: 'message' }
+        ]
+    },
+    {
+        id: 5,
+        type: 'reunion',
+        title: 'Réunion demain',
+        description: 'Réunion planning Q4 à 14h00',
+        time: 'Il y a 3 heures',
+        unread: false,
+        actions: [
+            { text: 'Voir agenda', type: 'primary', url: '/agenda' },
+            { text: 'Modifier', type: 'secondary', action: 'edit' }
+        ]
+    }
+];
+
+function toggleNotifications() {
+    const dropdown = document.getElementById('notifications-dropdown');
+    const isOpen = dropdown.classList.contains('show');
+    
+    // Close dropdown if open
+    if (isOpen) {
+        dropdown.classList.remove('show');
+    } else {
+        // Close other dropdowns
+        document.querySelectorAll('.widget-dropdown').forEach(d => {
+            d.classList.remove('show');
+        });
+        document.getElementById('search-suggestions').classList.remove('show');
+        
+        // Open notifications dropdown
+        dropdown.classList.add('show');
+        renderNotifications();
+    }
+}
+
+function renderNotifications() {
+    const notificationsList = document.getElementById('notifications-list');
+    const unreadCount = notifications.filter(n => n.unread).length;
+    
+    // Update badge
+    document.getElementById('notification-count').textContent = unreadCount;
+    document.getElementById('notification-count').style.display = unreadCount > 0 ? 'flex' : 'none';
+    
+    if (notifications.length === 0) {
+        notificationsList.innerHTML = `
+            <div class="notifications-empty">
+                Aucune notification
+            </div>
+        `;
+        return;
+    }
+    
+    notificationsList.innerHTML = notifications.map(notification => {
+        const iconMap = {
+            agenda: '📅',
+            mail: '📧',
+            task: '✅',
+            call: '📞',
+            reunion: '📹'
+        };
+        
+        const actionsHtml = notification.actions.map(action => {
+            if (action.url) {
+                return `<a href="${action.url}" class="notification-action ${action.type}">${action.text}</a>`;
+            } else {
+                return `<div class="notification-action ${action.type}" onclick="handleNotificationAction('${action.action}', ${notification.id})">${action.text}</div>`;
+            }
+        }).join('');
+        
+        return `
+            <div class="notification-item ${notification.unread ? 'unread' : ''}" onclick="markAsRead(${notification.id})">
+                <div class="notification-icon ${notification.type}">
+                    ${iconMap[notification.type]}
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">${notification.title}</div>
+                    <div class="notification-description">${notification.description}</div>
+                    <div class="notification-time">${notification.time}</div>
+                    ${notification.actions ? `<div class="notification-actions">${actionsHtml}</div>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function markAsRead(notificationId) {
+    const notification = notifications.find(n => n.id === notificationId);
+    if (notification) {
+        notification.unread = false;
+        renderNotifications();
+    }
+}
+
+function markAllAsRead() {
+    notifications.forEach(n => n.unread = false);
+    renderNotifications();
+}
+
+function handleNotificationAction(action, notificationId) {
+    const notification = notifications.find(n => n.id === notificationId);
+    
+    switch(action) {
+        case 'snooze':
+            alert('Rappel reporté de 10 minutes');
+            break;
+        case 'archive':
+            notifications = notifications.filter(n => n.id !== notificationId);
+            renderNotifications();
+            break;
+        case 'complete':
+            alert('Tâche marquée comme terminée');
+            notifications = notifications.filter(n => n.id !== notificationId);
+            renderNotifications();
+            break;
+        case 'call':
+            window.location.href = 'tel:+33612345678';
+            break;
+        case 'message':
+            alert('Ouverture du messager...');
+            break;
+        case 'edit':
+            window.location.href = '/agenda';
+            break;
+    }
+}
+
+function viewAllNotifications() {
+    alert('Redirection vers la page complète des notifications...');
+}
+
+// Close notifications when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.icon-button') && !e.target.closest('.notifications-dropdown')) {
+        document.getElementById('notifications-dropdown').classList.remove('show');
+    }
+});
+
+// Simulate real-time notifications
+function addNotification(type, title, description) {
+    const newNotification = {
+        id: Date.now(),
+        type: type,
+        title: title,
+        description: description,
+        time: 'À l\'instant',
+        unread: true,
+        actions: getDefaultActions(type)
+    };
+    
+    notifications.unshift(newNotification);
+    renderNotifications();
+    
+    // Update badge
+    const unreadCount = notifications.filter(n => n.unread).length;
+    document.getElementById('notification-count').textContent = unreadCount;
+    document.getElementById('notification-count').style.display = unreadCount > 0 ? 'flex' : 'none';
+}
+
+function getDefaultActions(type) {
+    const actionMap = {
+        agenda: [
+            { text: 'Voir agenda', type: 'primary', url: '/agenda' },
+            { text: 'Plus tard', type: 'secondary', action: 'snooze' }
+        ],
+        mail: [
+            { text: 'Lire', type: 'primary', url: '/mails' },
+            { text: 'Archiver', type: 'secondary', action: 'archive' }
+        ],
+        task: [
+            { text: 'Voir', type: 'primary', url: '/taches' },
+            { text: 'Terminer', type: 'secondary', action: 'complete' }
+        ],
+        call: [
+            { text: 'Rappeler', type: 'primary', action: 'call' },
+            { text: 'Message', type: 'secondary', action: 'message' }
+        ],
+        reunion: [
+            { text: 'Rejoindre', type: 'primary', url: '/reunion' },
+            { text: 'Plus tard', type: 'secondary', action: 'snooze' }
+        ]
+    };
+    
+    return actionMap[type] || [];
+}
+
+// Initialize notifications on page load
+document.addEventListener('DOMContentLoaded', function() {
+    renderNotifications();
+});
+
+// Search functionality with suggestions
+const searchConfig = {
+    agenda: {
+        title: 'Agenda',
+        description: 'Gérez vos événements et planning',
+        icon: '📅',
+        url: '/agenda',
+        keywords: ['agenda', 'événements', 'planning', 'rendez-vous', 'calendrier']
+    },
+    taches: {
+        title: 'Tâches',
+        description: 'Organisez vos tâches quotidiennes',
+        icon: '✅',
+        url: '/taches',
+        keywords: ['tâches', 'tasks', 'todo', 'choses à faire', 'missions']
+    },
+    projets: {
+        title: 'Projets',
+        description: 'Suivez vos projets et avancement',
+        icon: '📊',
+        url: '/projets',
+        keywords: ['projets', 'projects', 'travail', 'dossiers']
+    },
+    notes: {
+        title: 'Notes',
+        description: 'Prenez des notes et mémos',
+        icon: '📝',
+        url: '/notes',
+        keywords: ['notes', 'mémos', 'rappels', 'informations']
+    },
+    mails: {
+        title: 'Mails',
+        description: 'Envoyez et recevez des emails',
+        icon: '📧',
+        url: '/mails',
+        keywords: ['mails', 'emails', 'messages', 'courrier']
+    },
+    medias: {
+        title: 'Médias',
+        description: 'Photos, vidéos et appels',
+        icon: '🎬',
+        url: '/medias',
+        keywords: ['médias', 'photos', 'vidéos', 'images', 'appels']
+    },
+    reunion: {
+        title: 'Réunions',
+        description: 'Organisez des réunions en ligne',
+        icon: '📹',
+        url: '/reunion',
+        keywords: ['réunions', 'meetings', 'visio', 'conférences', 'appels vidéo']
+    },
+    musique: {
+        title: 'Musique',
+        description: 'Votre bibliothèque musicale',
+        icon: '🎵',
+        url: '/musique',
+        keywords: ['musique', 'songs', 'playlist', 'audio', 'morceaux']
+    },
+    liens: {
+        title: 'Liens',
+        description: 'Vos liens favoris et bookmarks',
+        icon: '🔗',
+        url: '/liens',
+        keywords: ['liens', 'links', 'favoris', 'bookmarks', 'signets']
+    },
+    profile: {
+        title: 'Profil',
+        description: 'Gérez votre profil utilisateur',
+        icon: '👤',
+        url: '/profile',
+        keywords: ['profil', 'profile', 'compte', 'paramètres', 'utilisateur']
+    }
+};
+
+document.querySelector('.search-input').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase().trim();
+    const suggestionsContainer = document.getElementById('search-suggestions');
+    
+    if (searchTerm.length < 2) {
+        suggestionsContainer.classList.remove('show');
+        return;
+    }
+    
+    const matches = [];
+    
+    // Search through all configured items
+    Object.entries(searchConfig).forEach(([key, config]) => {
+        // Check if search term matches title or any keyword
+        const titleMatch = config.title.toLowerCase().includes(searchTerm);
+        const keywordMatch = config.keywords.some(keyword => 
+            keyword.toLowerCase().includes(searchTerm)
+        );
+        
+        if (titleMatch || keywordMatch) {
+            matches.push({ key, ...config });
+        }
+    });
+    
+    if (matches.length > 0) {
+        suggestionsContainer.innerHTML = matches.map(match => `
+            <a href="${match.url}" class="search-suggestion-item">
+                <div class="search-suggestion-icon">${match.icon}</div>
+                <div class="search-suggestion-content">
+                    <div class="search-suggestion-title">${match.title}</div>
+                    <div class="search-suggestion-description">${match.description}</div>
+                </div>
+            </a>
+        `).join('');
+        suggestionsContainer.classList.add('show');
+    } else {
+        suggestionsContainer.innerHTML = `
+            <div class="search-suggestion-item" style="cursor: default;">
+                <div class="search-suggestion-icon">🔍</div>
+                <div class="search-suggestion-content">
+                    <div class="search-suggestion-title">Aucun résultat</div>
+                    <div class="search-suggestion-description">Essayez d'autres termes</div>
+                </div>
+            </div>
+        `;
+        suggestionsContainer.classList.add('show');
+    }
+});
+
+// Close suggestions when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.search-bar')) {
+        document.getElementById('search-suggestions').classList.remove('show');
+    }
+});
+
+// Handle keyboard navigation
+document.querySelector('.search-input').addEventListener('keydown', function(e) {
+    const suggestionsContainer = document.getElementById('search-suggestions');
+    const items = suggestionsContainer.querySelectorAll('.search-suggestion-item');
+    let currentIndex = -1;
+    
+    // Find current selected item
+    items.forEach((item, index) => {
+        if (item.classList.contains('selected')) {
+            currentIndex = index;
+        }
+    });
+    
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        items[currentIndex]?.classList.remove('selected');
+        currentIndex = Math.min(currentIndex + 1, items.length - 1);
+        items[currentIndex]?.classList.add('selected');
+        items[currentIndex]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        items[currentIndex]?.classList.remove('selected');
+        currentIndex = Math.max(currentIndex - 1, 0);
+        items[currentIndex]?.classList.add('selected');
+        items[currentIndex]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter' && currentIndex >= 0) {
+        e.preventDefault();
+        items[currentIndex].click();
+    } else if (e.key === 'Escape') {
+        suggestionsContainer.classList.remove('show');
+    }
+});
+
+// Add selected style for keyboard navigation
+const style = document.createElement('style');
+style.textContent = `
+    .search-suggestion-item.selected {
+        background: #eff6ff !important;
+    }
+`;
+document.head.appendChild(style);
+
+// Mobile menu toggle
+if (window.innerWidth <= 768) {
+    const mobileMenuBtn = document.createElement('button');
+    mobileMenuBtn.className = 'mobile-menu-btn';
+    mobileMenuBtn.innerHTML = '☰';
+    mobileMenuBtn.style.cssText = `
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        z-index: 1000;
+        width: 40px;
+        height: 40px;
+        border: none;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        cursor: pointer;
+        font-size: 1.25rem;
+    `;
+    // Listen for data updates from other pages
+window.addEventListener('storage', function(e) {
+    if (e.key && e.key.startsWith('widget_data_')) {
+        const dataType = e.key.replace('widget_data_', '');
+        widgetData[dataType] = JSON.parse(e.newValue);
+        
+        // Update the corresponding widget
+        const widget = document.querySelector(`[data-widget-type="${dataType}"]`);
+        if (widget) {
+            const widgetContent = widget.querySelector('.widget-content');
+            if (widgetContent) {
+                switch(dataType) {
+                    case 'tasks':
+                        widgetContent.innerHTML = getTasksWidget();
+                        break;
+                    case 'projets':
+                        widgetContent.innerHTML = getProjetsWidget();
+                        break;
+                    case 'agenda':
+                        widgetContent.innerHTML = getAgendaWidget();
+                        break;
+                    case 'mails':
+                        widgetContent.innerHTML = getMailsWidget();
+                        break;
+                }
+            }
+        }
+    }
+});
+
+// Function to refresh all widgets
+function refreshAllWidgets() {
+    console.log('Refreshing all widgets...');
+    // Fetch fresh data from server
+    fetch('/api/widget-data')
+        .then(response => response.json())
+        .then(data => {
+            widgetData = data;
+            
+            // Update all widgets
+            const widgets = document.querySelectorAll('.widget');
+            widgets.forEach(widget => {
+                const widgetType = widget.getAttribute('data-widget-type');
+                const widgetContent = widget.querySelector('.widget-content');
+                if (widgetContent) {
+                    switch(widgetType) {
+                        case 'tasks':
+                            widgetContent.innerHTML = getTasksWidget();
+                            break;
+                        case 'projets':
+                            widgetContent.innerHTML = getProjetsWidget();
+                            break;
+                        case 'agenda':
+                            widgetContent.innerHTML = getAgendaWidget();
+                            break;
+                        case 'mails':
+                            widgetContent.innerHTML = getMailsWidget();
+                            break;
+                    }
+                }
+            });
+        })
+        .catch(error => console.error('Error refreshing widgets:', error));
+}
+
+// Auto-refresh widgets every 30 seconds
+setInterval(refreshAllWidgets, 30000);
+
+    mobileMenuBtn.addEventListener('click', toggleSidebar);
+    document.body.appendChild(mobileMenuBtn);
+}
+</script>
+{% endblock %}

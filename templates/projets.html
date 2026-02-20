@@ -1,0 +1,1653 @@
+{% extends "base.html" %}
+
+{% block title %}Projets - SOS Thomas{% endblock %}
+
+{% block content %}
+<!-- Dashboard Content -->
+<div class="dashboard-content">
+    <!-- Header -->
+    <div class="dashboard-header">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="dashboard-title">Projets</h1>
+                <p class="dashboard-subtitle">Gestion de vos projets</p>
+            </div>
+            <button onclick="openCreateProjectModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+                <i class="fas fa-plus"></i>
+                <span>Créer un projet</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Projects Grid -->
+    <div class="widgets-grid">
+        {% for project in data.projects %}
+        <div class="widget project-card" data-project-id="{{ project.id }}">
+            <div class="widget-header">
+                <h3 class="widget-title">{{ project.name }}</h3>
+                <div class="relative">
+                    <button onclick="toggleProjectMenu('{{ project.id }}')" class="widget-menu">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <div id="project-menu-{{ project.id }}" class="project-dropdown">
+                        <button onclick="editProject('{{ project.id }}')" class="dropdown-item">
+                            <i class="fas fa-edit"></i>
+                            Modifier
+                        </button>
+                        <button onclick="duplicateProject('{{ project.id }}')" class="dropdown-item">
+                            <i class="fas fa-copy"></i>
+                            Dupliquer
+                        </button>
+                        <button onclick="moveProject('{{ project.id }}')" class="dropdown-item">
+                            <i class="fas fa-arrows-alt"></i>
+                            Déplacer
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button onclick="deleteProject('{{ project.id }}')" class="dropdown-item text-red-600">
+                            <i class="fas fa-trash"></i>
+                            Supprimer
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="widget-content">
+                <p class="text-gray-600 mb-4">{{ project.description|default('Aucune description') }}</p>
+                
+                <div class="mb-4">
+                    <div class="flex justify-between text-sm mb-2">
+                        <span>Progression</span>
+                        <span id="progress-{{ project.id }}">{{ project.progress|default(0) }}%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div id="progress-bar-{{ project.id }}" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: {{ project.progress|default(0) }}%"></div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <span class="px-3 py-1 rounded-full text-xs font-medium
+                        {% if project.status == 'en-cours' %}bg-blue-100 text-blue-800
+                        {% elif project.status == 'termine' %}bg-green-100 text-green-800
+                        {% elif project.status == 'en-pause' %}bg-yellow-100 text-yellow-800
+                        {% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {{ project.status.replace('-', ' ').title() }}
+                    </span>
+                    <button onclick="viewProjectDetails('{{ project.id }}')" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                        Voir les détails →
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="widget col-span-full">
+            <div class="text-center py-12">
+                <i class="fas fa-folder-open text-6xl text-gray-300 mb-4"></i>
+                <h3 class="text-xl font-semibold text-gray-600 mb-2">Aucun projet</h3>
+                <p class="text-gray-500 mb-6">Commencez par créer votre premier projet</p>
+                <button onclick="openCreateProjectModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                    <i class="fas fa-plus mr-2"></i>Créer un projet
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Section de gestion des membres et rôles -->
+<div class="dashboard-content mt-8">
+    <div class="dashboard-header">
+        <div class="flex justify-between items-center">
+            <div>
+                <h2 class="dashboard-title">Gestion des membres et rôles</h2>
+                <p class="dashboard-subtitle">Gérez les personnes et les rôles personnalisables pour vos projets</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="openManageRolesModal()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2">
+                    <i class="fas fa-user-tag"></i>
+                    <span>Gérer les rôles</span>
+                </button>
+                <button onclick="openAddMemberModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Ajouter un membre</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tableau des membres par projet -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h3 class="text-lg font-semibold text-gray-800">Membres par projet</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full" id="membersTable">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Projet</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Membre</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rôle</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Disponibilité</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compétences</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="membersTableBody">
+                    <!-- Les membres seront chargés dynamiquement -->
+                </tbody>
+            </table>
+            <div id="noMembersMessage" class="text-center py-8 text-gray-500 hidden">
+                <i class="fas fa-users text-4xl mb-3"></i>
+                <p>Aucun membre ajouté aux projets</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de gestion des rôles -->
+<div id="manageRolesModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h2 class="modal-title">Gestion des rôles</h2>
+            <button onclick="closeManageRolesModal()" class="modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Rôles personnalisables</h3>
+                <button onclick="openCreateRoleModal()" class="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+                    <i class="fas fa-plus mr-1"></i>Nouveau rôle
+                </button>
+            </div>
+            
+            <div id="rolesList" class="space-y-3">
+                <!-- Les rôles seront chargés dynamiquement -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de création/édition de rôle -->
+<div id="roleModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="roleModalTitle">Créer un rôle</h2>
+            <button onclick="closeRoleModal()" class="modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="roleForm" class="modal-body">
+            <input type="hidden" id="roleId">
+            
+            <div class="form-group">
+                <label for="roleName" class="form-label">Nom du rôle *</label>
+                <input type="text" id="roleName" name="name" required class="form-input" placeholder="Ex: Développeur, Chef de projet">
+            </div>
+            
+            <div class="form-group">
+                <label for="roleDescription" class="form-label">Description</label>
+                <textarea id="roleDescription" name="description" rows="3" class="form-input" placeholder="Décrivez les responsabilités de ce rôle..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="roleColor" class="form-label">Couleur</label>
+                <div class="flex items-center gap-3">
+                    <input type="color" id="roleColor" name="color" class="h-10 w-20 border border-gray-300 rounded">
+                    <input type="text" id="roleColorText" class="form-input flex-1" placeholder="#6B7280">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Permissions</label>
+                <div class="space-y-2">
+                    <label class="flex items-center">
+                        <input type="checkbox" name="permissions" value="view_project" class="mr-2">
+                        <span>Voir le projet</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="permissions" value="edit_project" class="mr-2">
+                        <span>Modifier le projet</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="permissions" value="manage_tasks" class="mr-2">
+                        <span>Gérer les tâches</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="permissions" value="manage_members" class="mr-2">
+                        <span>Gérer les membres</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="permissions" value="delete_project" class="mr-2">
+                        <span>Supprimer le projet</span>
+                    </label>
+                </div>
+            </div>
+        </form>
+        
+        <div class="modal-footer">
+            <button type="button" onclick="closeRoleModal()" class="btn btn-secondary">
+                Annuler
+            </button>
+            <button type="submit" form="roleForm" class="btn btn-primary">
+                <i class="fas fa-save mr-2"></i>Enregistrer
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal d'ajout de membre -->
+<div id="addMemberModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Ajouter un membre au projet</h2>
+            <button onclick="closeAddMemberModal()" class="modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="addMemberForm" class="modal-body">
+            <div class="form-group">
+                <label for="memberProject" class="form-label">Projet *</label>
+                <select id="memberProject" name="project_id" required class="form-select">
+                    <option value="">Sélectionnez un projet</option>
+                    {% for project in data.projects %}
+                    <option value="{{ project.id }}">{{ project.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="memberName" class="form-label">Nom du membre *</label>
+                <input type="text" id="memberName" name="name" required class="form-input" placeholder="Entrez le nom du membre">
+            </div>
+            
+            <div class="form-group">
+                <label for="memberEmail" class="form-label">Email</label>
+                <input type="email" id="memberEmail" name="email" class="form-input" placeholder="email@example.com">
+            </div>
+            
+            <div class="form-group">
+                <label for="memberRole" class="form-label">Rôle</label>
+                <select id="memberRole" name="role_id" class="form-select">
+                    <option value="">Aucun rôle</option>
+                    <!-- Les rôles seront chargés dynamiquement -->
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="memberPhone" class="form-label">Téléphone</label>
+                <input type="tel" id="memberPhone" name="phone" class="form-input" placeholder="06 12 34 56 78">
+            </div>
+            
+            <div class="form-group">
+                <label for="memberAvailability" class="form-label">Disponibilité</label>
+                <select id="memberAvailability" name="availability" class="form-select">
+                    <option value="disponible">Disponible</option>
+                    <option value="occupé">Occupé</option>
+                    <option value="indisponible">Indisponible</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="memberSkills" class="form-label">Compétences</label>
+                <input type="text" id="memberSkills" name="skills" class="form-input" placeholder="JavaScript, Python, Design... (séparez par des virgules)">
+            </div>
+            
+            <div class="form-group">
+                <label for="memberNotes" class="form-label">Notes</label>
+                <textarea id="memberNotes" name="notes" rows="3" class="form-input" placeholder="Informations supplémentaires sur ce membre..."></textarea>
+            </div>
+        </form>
+        
+        <div class="modal-footer">
+            <button type="button" onclick="closeAddMemberModal()" class="btn btn-secondary">
+                Annuler
+            </button>
+            <button type="submit" form="addMemberForm" class="btn btn-primary">
+                <i class="fas fa-user-plus mr-2"></i>Ajouter le membre
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal d'édition de membre -->
+<div id="editMemberModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Modifier un membre</h2>
+            <button onclick="closeEditMemberModal()" class="modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="editMemberForm" class="modal-body">
+            <input type="hidden" id="editMemberId">
+            
+            <div class="form-group">
+                <label for="editMemberName" class="form-label">Nom du membre *</label>
+                <input type="text" id="editMemberName" name="name" required class="form-input">
+            </div>
+            
+            <div class="form-group">
+                <label for="editMemberEmail" class="form-label">Email</label>
+                <input type="email" id="editMemberEmail" name="email" class="form-input">
+            </div>
+            
+            <div class="form-group">
+                <label for="editMemberRole" class="form-label">Rôle</label>
+                <select id="editMemberRole" name="role_id" class="form-select">
+                    <option value="">Aucun rôle</option>
+                    <!-- Les rôles seront chargés dynamiquement -->
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="editMemberPhone" class="form-label">Téléphone</label>
+                <input type="tel" id="editMemberPhone" name="phone" class="form-input">
+            </div>
+            
+            <div class="form-group">
+                <label for="editMemberAvailability" class="form-label">Disponibilité</label>
+                <select id="editMemberAvailability" name="availability" class="form-select">
+                    <option value="disponible">Disponible</option>
+                    <option value="occupé">Occupé</option>
+                    <option value="indisponible">Indisponible</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="editMemberSkills" class="form-label">Compétences</label>
+                <input type="text" id="editMemberSkills" name="skills" class="form-input" placeholder="JavaScript, Python, Design... (séparez par des virgules)">
+            </div>
+            
+            <div class="form-group">
+                <label for="editMemberNotes" class="form-label">Notes</label>
+                <textarea id="editMemberNotes" name="notes" rows="3" class="form-input"></textarea>
+            </div>
+        </form>
+        
+        <div class="modal-footer">
+            <button type="button" onclick="closeEditMemberModal()" class="btn btn-secondary">
+                Annuler
+            </button>
+            <button type="submit" form="editMemberForm" class="btn btn-primary">
+                <i class="fas fa-save mr-2"></i>Enregistrer les modifications
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de création de projet -->
+<div id="createProjectModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Créer un nouveau projet</h2>
+            <button onclick="closeCreateProjectModal()" class="modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="createProjectForm" class="modal-body">
+            <div class="form-group">
+                <label for="projectName" class="form-label">Nom du projet *</label>
+                <input type="text" id="projectName" name="name" required class="form-input" placeholder="Entrez le nom du projet">
+            </div>
+            
+            <div class="form-group">
+                <label for="projectDescription" class="form-label">Description</label>
+                <textarea id="projectDescription" name="description" rows="3" class="form-input" placeholder="Décrivez votre projet..."></textarea>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="form-group">
+                    <label for="projectStatus" class="form-label">Statut</label>
+                    <select id="projectStatus" name="status" class="form-select">
+                        <option value="a-venir">À Venir</option>
+                        <option value="en-cours" selected>En Cours</option>
+                        <option value="en-pause">En Pause</option>
+                        <option value="termine">Terminé</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="projectPriority" class="form-label">Priorité</label>
+                    <select id="projectPriority" name="priority" class="form-select">
+                        <option value="basse">Basse</option>
+                        <option value="moyenne" selected>Moyenne</option>
+                        <option value="haute">Haute</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="form-group">
+                    <label for="projectStartDate" class="form-label">Date de début</label>
+                    <input type="date" id="projectStartDate" name="start_date" class="form-input">
+                </div>
+                
+                <div class="form-group">
+                    <label for="projectEndDate" class="form-label">Date de fin prévue</label>
+                    <input type="date" id="projectEndDate" name="end_date" class="form-input">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="projectMethodology" class="form-label">Méthodologie</label>
+                <select id="projectMethodology" name="methodology" class="form-select">
+                    <option value="libre" selected>Libre</option>
+                    <option value="agile">Agile</option>
+                    <option value="scrum">Scrum</option>
+                    <option value="waterfall">Waterfall</option>
+                    <option value="kanban">Kanban</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="projectObjectives" class="form-label">Objectifs</label>
+                <textarea id="projectObjectives" name="objectives" rows="3" class="form-input" placeholder="Quels sont les objectifs du projet ?"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="projectProgress" class="form-label">Progression initiale (%)</label>
+                <input type="number" id="projectProgress" name="progress" min="0" max="100" value="0" class="form-input">
+            </div>
+        </form>
+        
+        <div class="modal-footer">
+            <button type="button" onclick="closeCreateProjectModal()" class="btn btn-secondary">
+                Annuler
+            </button>
+            <button type="submit" form="createProjectForm" class="btn btn-primary">
+                <i class="fas fa-plus mr-2"></i>Créer le projet
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal d'édition de projet -->
+<div id="editProjectModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Modifier le projet</h2>
+            <button onclick="closeEditProjectModal()" class="modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="editProjectForm" class="modal-body">
+            <input type="hidden" id="editProjectId" name="id">
+            
+            <div class="form-group">
+                <label for="editProjectName" class="form-label">Nom du projet *</label>
+                <input type="text" id="editProjectName" name="name" required class="form-input">
+            </div>
+            
+            <div class="form-group">
+                <label for="editProjectDescription" class="form-label">Description</label>
+                <textarea id="editProjectDescription" name="description" rows="3" class="form-input"></textarea>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="form-group">
+                    <label for="editProjectStatus" class="form-label">Statut</label>
+                    <select id="editProjectStatus" name="status" class="form-select">
+                        <option value="a-venir">À Venir</option>
+                        <option value="en-cours">En Cours</option>
+                        <option value="en-pause">En Pause</option>
+                        <option value="termine">Terminé</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editProjectPriority" class="form-label">Priorité</label>
+                    <select id="editProjectPriority" name="priority" class="form-select">
+                        <option value="basse">Basse</option>
+                        <option value="moyenne">Moyenne</option>
+                        <option value="haute">Haute</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="form-group">
+                    <label for="editProjectStartDate" class="form-label">Date de début</label>
+                    <input type="date" id="editProjectStartDate" name="start_date" class="form-input">
+                </div>
+                
+                <div class="form-group">
+                    <label for="editProjectEndDate" class="form-label">Date de fin prévue</label>
+                    <input type="date" id="editProjectEndDate" name="end_date" class="form-input">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="editProjectMethodology" class="form-label">Méthodologie</label>
+                <select id="editProjectMethodology" name="methodology" class="form-select">
+                    <option value="libre">Libre</option>
+                    <option value="agile">Agile</option>
+                    <option value="scrum">Scrum</option>
+                    <option value="waterfall">Waterfall</option>
+                    <option value="kanban">Kanban</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="editProjectObjectives" class="form-label">Objectifs</label>
+                <textarea id="editProjectObjectives" name="objectives" rows="3" class="form-input"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="editProjectProgress" class="form-label">Progression (%)</label>
+                <input type="number" id="editProjectProgress" name="progress" min="0" max="100" class="form-input">
+            </div>
+        </form>
+        
+        <div class="modal-footer">
+            <button type="button" onclick="closeEditProjectModal()" class="btn btn-secondary">
+                Annuler
+            </button>
+            <button type="submit" form="editProjectForm" class="btn btn-primary">
+                <i class="fas fa-save mr-2"></i>Enregistrer les modifications
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Styles pour les modales et dropdowns -->
+<style>
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: between;
+    align-items: center;
+}
+
+.modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+    flex: 1;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    padding: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.form-input, .form-select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.form-input:focus, .form-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2563eb;
+}
+
+.btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+.project-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    min-width: 180px;
+    z-index: 100;
+    display: none;
+    margin-top: 0.5rem;
+}
+
+.project-dropdown.show {
+    display: block;
+}
+
+.dropdown-item {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: none;
+    background: none;
+    text-align: left;
+    font-size: 0.875rem;
+    color: #374151;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.dropdown-item:hover {
+    background: #f3f4f6;
+}
+
+.dropdown-item.text-red-600 {
+    color: #dc2626;
+}
+
+.dropdown-item.text-red-600:hover {
+    background: #fef2f2;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 0.5rem 0;
+}
+
+.drag-indicator {
+    padding: 0.5rem;
+    cursor: grab;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    opacity: 0.6;
+}
+
+.drag-indicator:hover {
+    opacity: 1;
+    background: rgba(156, 163, 175, 0.1);
+}
+
+.project-card {
+    position: relative;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.project-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.project-card.drag-over {
+    border: 2px dashed #3b82f6;
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.project-card[draggable="true"] {
+    cursor: grab;
+}
+
+.project-card[draggable="true"]:active {
+    cursor: grabbing;
+}
+
+.project-card.dragging {
+    opacity: 0.5;
+    transform: rotate(5deg);
+    z-index: 1000;
+}
+
+/* Animation de notification */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+.fixed.top-20.right-4 {
+    animation: slideInRight 0.3s ease-out;
+}
+
+.grid.grid-cols-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .grid.grid-cols-2 {
+        grid-template-columns: 1fr;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 1rem;
+    }
+}
+</style>
+
+<script>
+// Fonctions pour la gestion des projets
+let projectsData = {{ data.projects|tojson }};
+
+function openCreateProjectModal() {
+    document.getElementById('createProjectModal').classList.add('show');
+    document.getElementById('createProjectForm').reset();
+}
+
+function closeCreateProjectModal() {
+    document.getElementById('createProjectModal').classList.remove('show');
+}
+
+function openEditProjectModal() {
+    document.getElementById('editProjectModal').classList.add('show');
+}
+
+function closeEditProjectModal() {
+    document.getElementById('editProjectModal').classList.remove('show');
+}
+
+function toggleProjectMenu(projectId) {
+    const menu = document.getElementById(`project-menu-${projectId}`);
+    const allMenus = document.querySelectorAll('.project-dropdown');
+    
+    allMenus.forEach(m => {
+        if (m !== menu) {
+            m.classList.remove('show');
+        }
+    });
+    
+    menu.classList.toggle('show');
+}
+
+function editProject(projectId) {
+    const project = projectsData.find(p => p.id === projectId);
+    if (!project) return;
+    
+    // Remplir le formulaire avec les données du projet
+    document.getElementById('editProjectId').value = project.id;
+    document.getElementById('editProjectName').value = project.name || '';
+    document.getElementById('editProjectDescription').value = project.description || '';
+    document.getElementById('editProjectStatus').value = project.status || 'en-cours';
+    document.getElementById('editProjectPriority').value = project.priority || 'moyenne';
+    document.getElementById('editProjectStartDate').value = project.start_date || '';
+    document.getElementById('editProjectEndDate').value = project.end_date || '';
+    document.getElementById('editProjectMethodology').value = project.methodology || 'libre';
+    document.getElementById('editProjectObjectives').value = project.objectives || '';
+    document.getElementById('editProjectProgress').value = project.progress || 0;
+    
+    openEditProjectModal();
+    closeAllProjectMenus();
+}
+
+function duplicateProject(projectId) {
+    const project = projectsData.find(p => p.id === projectId);
+    if (!project) return;
+    
+    const newProject = {
+        ...project,
+        id: null, // Sera généré par le serveur
+        name: project.name + ' (copie)',
+        created_at: new Date().toISOString()
+    };
+    
+    // Envoyer la demande de duplication au serveur
+    fetch('/api/duplicate-project', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newProject)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Erreur lors de la duplication: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur lors de la duplication du projet');
+    });
+    
+    closeAllProjectMenus();
+}
+
+function moveProject(projectId) {
+    // Activer le mode de réorganisation
+    enableReorganizationMode();
+    closeAllProjectMenus();
+}
+
+function enableReorganizationMode() {
+    const grid = document.querySelector('.widgets-grid');
+    const cards = grid.querySelectorAll('.project-card');
+    
+    // Ajouter les styles de glisser-déposer
+    cards.forEach(card => {
+        card.draggable = true;
+        card.style.cursor = 'move';
+        card.classList.add('draggable');
+        
+        card.addEventListener('dragstart', handleDragStart);
+        card.addEventListener('dragend', handleDragEnd);
+        card.addEventListener('dragover', handleDragOver);
+        card.addEventListener('drop', handleDrop);
+        card.addEventListener('dragenter', handleDragEnter);
+        card.addEventListener('dragleave', handleDragLeave);
+    });
+    
+    // Afficher une notification
+    showNotification('Mode réorganisation activé. Glissez-déposez les cartes pour réorganiser les projets.');
+    
+    // Désactiver le mode après 30 secondes ou quand on clique ailleurs
+    setTimeout(disableReorganizationMode, 30000);
+    document.addEventListener('click', disableReorganizationModeOnClick);
+}
+
+function disableReorganizationMode() {
+    const cards = document.querySelectorAll('.project-card');
+    
+    cards.forEach(card => {
+        card.draggable = false;
+        card.style.cursor = 'default';
+        card.classList.remove('draggable');
+        
+        // Retirer les écouteurs d'événements
+        card.removeEventListener('dragstart', handleDragStart);
+        card.removeEventListener('dragend', handleDragEnd);
+        card.removeEventListener('dragover', handleDragOver);
+        card.removeEventListener('drop', handleDrop);
+        card.removeEventListener('dragenter', handleDragEnter);
+        card.removeEventListener('dragleave', handleDragLeave);
+    });
+    
+    document.removeEventListener('click', disableReorganizationModeOnClick);
+    showNotification('Mode réorganisation désactivé');
+}
+
+function disableReorganizationModeOnClick(e) {
+    if (!e.target.closest('.project-card')) {
+        disableReorganizationMode();
+    }
+}
+
+let draggedElement = null;
+
+function handleDragStart(e) {
+    draggedElement = this;
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', this.innerHTML);
+}
+
+function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    
+    const cards = document.querySelectorAll('.project-card');
+    cards.forEach(card => {
+        card.classList.remove('drag-over');
+    });
+}
+
+function handleDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+    
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+}
+
+function handleDragEnter(e) {
+    this.classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+    this.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+    if (e.stopPropagation) {
+        e.stopPropagation();
+    }
+    
+    if (draggedElement !== this) {
+        const draggedId = draggedElement.getAttribute('data-project-id');
+        const targetId = this.getAttribute('data-project-id');
+        
+        // Échanger les positions dans le DOM
+        const draggedContent = draggedElement.innerHTML;
+        const targetContent = this.innerHTML;
+        
+        draggedElement.innerHTML = targetContent;
+        this.innerHTML = draggedContent;
+        
+        // Mettre à jour les data-project-id
+        draggedElement.setAttribute('data-project-id', targetId);
+        this.setAttribute('data-project-id', draggedId);
+        
+        // Sauvegarder le nouvel ordre dans la base de données
+        saveProjectOrder();
+        
+        showNotification('Projets réorganisés avec succès');
+    }
+    
+    return false;
+}
+
+function initializeDragAndDrop() {
+    const cards = document.querySelectorAll('.project-card');
+    
+    cards.forEach(card => {
+        card.addEventListener('dragstart', handleDragStart);
+        card.addEventListener('dragend', handleDragEnd);
+        card.addEventListener('dragover', handleDragOver);
+        card.addEventListener('drop', handleDrop);
+        card.addEventListener('dragenter', handleDragEnter);
+        card.addEventListener('dragleave', handleDragLeave);
+    });
+}
+
+function saveProjectOrder() {
+    const cards = document.querySelectorAll('.project-card');
+    const projectOrder = Array.from(cards).map(card => card.getAttribute('data-project-id'));
+    
+    // Envoyer le nouvel ordre au serveur
+    fetch('/api/reorder-projects', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ order: projectOrder })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            console.error('Erreur lors de la sauvegarde de l\'ordre:', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+function showNotification(message) {
+    // Créer une notification temporaire
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-20 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-opacity duration-300';
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    // Afficher la notification
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 300);
+    }, 3000);
+}
+
+function deleteProject(projectId) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce projet ? Cette action est irréversible.')) {
+        fetch(`/api/delete-project/${projectId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erreur lors de la suppression: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur lors de la suppression du projet');
+        });
+    }
+    closeAllProjectMenus();
+}
+
+function closeAllProjectMenus() {
+    document.querySelectorAll('.project-dropdown').forEach(menu => {
+        menu.classList.remove('show');
+    });
+}
+
+function viewProjectDetails(projectId) {
+    window.location.href = '/project/' + projectId;
+}
+
+// Gestion des formulaires
+document.getElementById('createProjectForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const projectData = Object.fromEntries(formData);
+    
+    fetch('/api/add_project', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(projectData)
+    })
+    .then(response => {
+        if (response.ok) {
+            closeCreateProjectModal();
+            location.reload();
+        } else {
+            alert('Erreur lors de la création du projet');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur lors de la création du projet');
+    });
+});
+
+document.getElementById('editProjectForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const projectData = Object.fromEntries(formData);
+    const projectId = projectData.id;
+    
+    fetch(`/api/edit-project/${projectId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(projectData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeEditProjectModal();
+            location.reload();
+        } else {
+            alert('Erreur lors de la modification: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur lors de la modification du projet');
+    });
+});
+
+// Fermer les dropdowns en cliquant à l'extérieur
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.widget-menu') && !e.target.closest('.project-dropdown')) {
+        closeAllProjectMenus();
+    }
+});
+
+// Fermer les modales en cliquant à l'extérieur
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal')) {
+        e.target.classList.remove('show');
+    }
+});
+
+// Variables globales pour les membres et rôles
+let allRoles = [];
+let allMembers = [];
+
+// Fonctions pour la gestion des rôles
+function openManageRolesModal() {
+    document.getElementById('manageRolesModal').classList.add('show');
+    loadRoles();
+}
+
+function closeManageRolesModal() {
+    document.getElementById('manageRolesModal').classList.remove('show');
+}
+
+function openCreateRoleModal() {
+    document.getElementById('roleModalTitle').textContent = 'Créer un rôle';
+    document.getElementById('roleForm').reset();
+    document.getElementById('roleId').value = '';
+    document.getElementById('roleModal').classList.add('show');
+}
+
+function openEditRoleModal(roleId) {
+    const role = allRoles.find(r => r.id === roleId);
+    if (!role) return;
+    
+    document.getElementById('roleModalTitle').textContent = 'Modifier le rôle';
+    document.getElementById('roleId').value = role.id;
+    document.getElementById('roleName').value = role.name;
+    document.getElementById('roleDescription').value = role.description || '';
+    document.getElementById('roleColor').value = role.color || '#6B7280';
+    document.getElementById('roleColorText').value = role.color || '#6B7280';
+    
+    // Cocher les permissions
+    const checkboxes = document.querySelectorAll('input[name="permissions"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = role.permissions && role.permissions.includes(checkbox.value);
+    });
+    
+    document.getElementById('roleModal').classList.add('show');
+}
+
+function closeRoleModal() {
+    document.getElementById('roleModal').classList.remove('show');
+}
+
+function loadRoles() {
+    fetch('/api/roles')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                allRoles = data.roles;
+                displayRoles();
+                updateRoleSelects();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading roles:', error);
+        });
+}
+
+function displayRoles() {
+    const rolesList = document.getElementById('rolesList');
+    
+    if (allRoles.length === 0) {
+        rolesList.innerHTML = '<p class="text-gray-500 text-center py-4">Aucun rôle créé</p>';
+        return;
+    }
+    
+    rolesList.innerHTML = allRoles.map(role => `
+        <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-4 h-4 rounded-full" style="background-color: ${role.color || '#6B7280'}"></div>
+                    <div>
+                        <h4 class="font-semibold text-gray-800">${role.name}</h4>
+                        <p class="text-sm text-gray-600">${role.description || 'Aucune description'}</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="openEditRoleModal('${role.id}')" class="text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="deleteRole('${role.id}')" class="text-red-600 hover:text-red-800">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateRoleSelects() {
+    const selects = [document.getElementById('memberRole'), document.getElementById('editMemberRole')];
+    
+    selects.forEach(select => {
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">Aucun rôle</option>' +
+            allRoles.map(role => `<option value="${role.id}">${role.name}</option>`).join('');
+        select.value = currentValue;
+    });
+}
+
+function deleteRole(roleId) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce rôle ?')) return;
+    
+    fetch(`/api/roles/${roleId}`, {
+        method: 'DELETE'
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadRoles();
+                showNotification('Rôle supprimé avec succès');
+            } else {
+                alert('Erreur: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur lors de la suppression du rôle');
+        });
+}
+
+// Fonctions pour la gestion des membres
+function openAddMemberModal() {
+    document.getElementById('addMemberForm').reset();
+    document.getElementById('addMemberModal').classList.add('show');
+}
+
+function closeAddMemberModal() {
+    document.getElementById('addMemberModal').classList.remove('show');
+}
+
+function openEditMemberModal(memberId) {
+    const member = allMembers.find(m => m.id === memberId);
+    if (!member) return;
+    
+    document.getElementById('editMemberId').value = member.id;
+    document.getElementById('editMemberName').value = member.name;
+    document.getElementById('editMemberEmail').value = member.email || '';
+    document.getElementById('editMemberRole').value = member.role_id || '';
+    document.getElementById('editMemberPhone').value = member.phone || '';
+    document.getElementById('editMemberAvailability').value = member.availability || 'disponible';
+    document.getElementById('editMemberSkills').value = member.skills ? member.skills.join(', ') : '';
+    document.getElementById('editMemberNotes').value = member.notes || '';
+    
+    document.getElementById('editMemberModal').classList.add('show');
+}
+
+function closeEditMemberModal() {
+    document.getElementById('editMemberModal').classList.remove('show');
+}
+
+function loadAllMembers() {
+    // Charger tous les membres de tous les projets
+    const projectIds = {{ data.projects|map(attribute='id')|list|tojson }};
+    
+    Promise.all(projectIds.map(projectId => 
+        fetch(`/api/projects/${projectId}/members`)
+            .then(response => response.json())
+            .then(data => data.success ? data.members : [])
+    ))
+    .then(allProjectMembers => {
+        allMembers = allProjectMembers.flat();
+        displayMembers();
+    })
+    .catch(error => {
+        console.error('Error loading members:', error);
+    });
+}
+
+function displayMembers() {
+    const tbody = document.getElementById('membersTableBody');
+    const noMessage = document.getElementById('noMembersMessage');
+    
+    if (allMembers.length === 0) {
+        tbody.innerHTML = '';
+        noMessage.classList.remove('hidden');
+        return;
+    }
+    
+    noMessage.classList.add('hidden');
+    
+    tbody.innerHTML = allMembers.map(member => {
+        const project = {{ data.projects|tojson }}.find(p => p.id === member.project_id);
+        const projectName = project ? project.name : 'Projet inconnu';
+        
+        const availabilityColors = {
+            'disponible': 'bg-green-100 text-green-800',
+            'occupé': 'bg-yellow-100 text-yellow-800',
+            'indisponible': 'bg-red-100 text-red-800'
+        };
+        
+        const roleBadge = member.role ? 
+            `<span class="px-2 py-1 rounded-full text-xs font-medium" style="background-color: ${member.role.color}20; color: ${member.role.color}">${member.role.name}</span>` :
+            '<span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Aucun rôle</span>';
+        
+        return `
+            <tr>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${projectName}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${member.name}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${member.email || '-'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">${roleBadge}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    <span class="px-2 py-1 rounded-full text-xs font-medium ${availabilityColors[member.availability] || availabilityColors['disponible']}">
+                        ${member.availability || 'disponible'}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-500">
+                    ${member.skills ? member.skills.slice(0, 3).map(skill => 
+                        `<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs mr-1">${skill}</span>`
+                    ).join('') : '-'}
+                    ${member.skills && member.skills.length > 3 ? '...' : ''}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button onclick="openEditMemberModal('${member.id}')" class="text-blue-600 hover:text-blue-900 mr-3">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="deleteMember('${member.id}')" class="text-red-600 hover:text-red-900">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function deleteMember(memberId) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce membre ?')) return;
+    
+    fetch(`/api/project_members/${memberId}`, {
+        method: 'DELETE'
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadAllMembers();
+                showNotification('Membre supprimé avec succès');
+            } else {
+                alert('Erreur: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur lors de la suppression du membre');
+        });
+}
+
+function showNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-20 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-opacity duration-300';
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 300);
+    }, 3000);
+}
+
+// Gestion des formulaires
+document.getElementById('roleForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const roleId = document.getElementById('roleId').value;
+    const roleData = Object.fromEntries(formData);
+    
+    // Gérer les permissions
+    const permissions = Array.from(document.querySelectorAll('input[name="permissions"]:checked'))
+        .map(checkbox => checkbox.value);
+    roleData.permissions = permissions;
+    
+    const isEdit = roleId !== '';
+    const url = isEdit ? `/api/roles/${roleId}` : '/api/roles';
+    const method = isEdit ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(roleData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeRoleModal();
+            closeManageRolesModal();
+            loadRoles();
+            showNotification(isEdit ? 'Rôle modifié avec succès' : 'Rôle créé avec succès');
+        } else {
+            alert('Erreur: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur lors de la sauvegarde du rôle');
+    });
+});
+
+document.getElementById('addMemberForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const memberData = Object.fromEntries(formData);
+    
+    // Gérer les compétences
+    if (memberData.skills) {
+        memberData.skills = memberData.skills.split(',').map(skill => skill.trim()).filter(skill => skill);
+    }
+    
+    fetch(`/api/projects/${memberData.project_id}/members`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(memberData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeAddMemberModal();
+            loadAllMembers();
+            showNotification('Membre ajouté avec succès');
+        } else {
+            alert('Erreur: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur lors de l\'ajout du membre');
+    });
+});
+
+document.getElementById('editMemberForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const memberData = Object.fromEntries(formData);
+    const memberId = document.getElementById('editMemberId').value;
+    
+    // Gérer les compétences
+    if (memberData.skills) {
+        memberData.skills = memberData.skills.split(',').map(skill => skill.trim()).filter(skill => skill);
+    }
+    
+    fetch(`/api/project_members/${memberId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(memberData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeEditMemberModal();
+            loadAllMembers();
+            showNotification('Membre modifié avec succès');
+        } else {
+            alert('Erreur: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur lors de la modification du membre');
+    });
+});
+
+// Synchronisation du sélecteur de couleur
+document.getElementById('roleColor').addEventListener('input', function(e) {
+    document.getElementById('roleColorText').value = e.target.value;
+});
+
+document.getElementById('roleColorText').addEventListener('input', function(e) {
+    if (/^#[0-9A-F]{6}$/i.test(e.target.value)) {
+        document.getElementById('roleColor').value = e.target.value;
+    }
+});
+
+// Listen for progress updates from project details pages
+window.addEventListener('storage', function(e) {
+    console.log('Storage event detected:', e.key, e.newValue);
+    if (e.key && e.key.startsWith('project_progress_')) {
+        const projectId = e.key.replace('project_progress_', '');
+        const progress = e.newValue;
+        
+        console.log('Updating progress for project:', projectId, 'to:', progress);
+        
+        // Update the progress display for this project
+        const progressText = document.getElementById(`progress-${projectId}`);
+        const progressBar = document.getElementById(`progress-bar-${projectId}`);
+        
+        if (progressText) {
+            progressText.textContent = progress + '%';
+            console.log('Updated progress text for project', projectId, 'to:', progress + '%');
+        }
+        
+        if (progressBar) {
+            progressBar.style.width = progress + '%';
+            console.log('Updated progress bar for project', projectId, 'to:', progress + '%');
+        }
+    }
+});
+
+// Function to force update project progress
+function updateProjectProgressFromStorage(projectId) {
+    const storedProgress = localStorage.getItem(`project_progress_${projectId}`);
+    if (storedProgress) {
+        console.log('Found stored progress for project', projectId, ':', storedProgress);
+        
+        const progressText = document.getElementById(`progress-${projectId}`);
+        const progressBar = document.getElementById(`progress-bar-${projectId}`);
+        
+        if (progressText) {
+            progressText.textContent = storedProgress + '%';
+        }
+        
+        if (progressBar) {
+            progressBar.style.width = storedProgress + '%';
+        }
+    }
+}
+
+// Initialisation au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    loadRoles();
+    loadAllMembers();
+    
+    console.log('Projects page loaded, checking for stored progress...');
+    
+    // Check for any stored progress updates on page load
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('project_progress_')) {
+            const projectId = key.replace('project_progress_', '');
+            const progress = localStorage.getItem(key);
+            
+            console.log('Found stored progress on load:', projectId, progress);
+            updateProjectProgressFromStorage(projectId);
+        }
+    }
+    
+    // Also check for specific project IDs that might be on the page
+    const projectIds = ['{{ project.id if projects else '' }}'];
+    if (projectIds) {
+        projectIds.split(',').forEach(projectId => {
+            updateProjectProgressFromStorage(projectId.trim());
+        });
+    }
+});
+</script>
+{% endblock %}

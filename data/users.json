@@ -1,0 +1,37 @@
+{
+  "90b5a253-a739-4b8a-a750-e1cd5aad178b": {
+    "id": "90b5a253-a739-4b8a-a750-e1cd5aad178b",
+    "username": "admin",
+    "email": "admin@sosthomas.local",
+    "password": "pbkdf2:sha256:600000$5UxJAFNz8aLi1XRV$3adb9d6f5bfdfedb9b0e4cc76b5ba396261b45d21cec94aa80f7dfc032847738",
+    "created_at": "2026-01-22T11:20:36.708802"
+  },
+  "e0a626d0-de11-4cdb-97e4-a2f1a97fbd6f": {
+    "id": "e0a626d0-de11-4cdb-97e4-a2f1a97fbd6f",
+    "username": "test",
+    "email": "test@example.com",
+    "password": "scrypt:32768:8:1$gt8nadeXQPiZMTvB$0220f408ef556bd3139fcc1db8fda0401a9d96df108624e64f22ad05b856c83ee63052ace94cf1bdd3e947f7ee234f2b1f0d7b80a611bba4ff908027451536c1",
+    "created_at": "2026-01-27T17:01:04.079741"
+  },
+  "5842b648-3ff3-44ac-8abf-d66356adf6e3": {
+    "id": "5842b648-3ff3-44ac-8abf-d66356adf6e3",
+    "username": "test",
+    "email": "test@example.com",
+    "password": "scrypt:32768:8:1$CdcrGZoYCz380ZXA$097a856882080602c0cc7a86eae9a165fc9fca02d92febe0a734171581e86db7d2ce3ba8c8061b1d8d183d3b929f987c0d0950f2025be22874b0bbe8147ada83",
+    "created_at": "2026-01-27T17:01:17.561987"
+  },
+  "7f496b4d-1cf3-4ab1-9fd0-96c2fef3de59": {
+    "id": "7f496b4d-1cf3-4ab1-9fd0-96c2fef3de59",
+    "username": "a.blevanus",
+    "email": "a.blevanus@elv.esitc-paris.fr",
+    "password": "scrypt:32768:8:1$A8yShe85RWZn7gRx$fb2ed6cf3460a3c5a57eb4d17076a1a8e0996fbe08bd4f6e8fff42138d4f0f7c7146817eeae704990dde682b5e0eee00b151611889aa2cde8155e51fe6bb11ba",
+    "created_at": "2026-02-17T15:25:08.333930"
+  },
+  "ad2575b0-da78-41cd-956e-3d0c1dd8dcea": {
+    "id": "ad2575b0-da78-41cd-956e-3d0c1dd8dcea",
+    "username": "c.deleneuville",
+    "email": "c.deleneuville@elv.esitc-paris.fr",
+    "password": "scrypt:32768:8:1$6OVhi3xsvFitPV8R$fa73093e84e2c496a797ae754f8a2c59a9f53b3d5514ad7b32b48bf96c1f06f057613e3843a03aa342500c1ea312811de2a47d85f488a63253d6062fa77ac690",
+    "created_at": "2026-02-17T15:27:59.687123"
+  }
+}

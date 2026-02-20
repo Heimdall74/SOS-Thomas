@@ -1,0 +1,129 @@
+/* Enhanced Drag & Drop Styles pour Kanban */
+
+/* Styles de base pour les cartes de tâches */
+.task-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid #E5E7EB;
+    cursor: grab;
+    transition: all 0.2s ease;
+    position: relative;
+    user-select: none;
+}
+
+.task-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* État dragging - carte en cours de déplacement */
+.task-card.dragging {
+    opacity: 0.5;
+    transform: rotate(5deg) scale(1.05);
+    z-index: 1000;
+    cursor: grabbing;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    transition: none;
+}
+
+/* État drag-over - survol pendant le drag */
+.task-card.drag-over {
+    border-color: #87CEEB;
+    box-shadow: 0 0 0 3px #87CEEB;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+}
+
+/* Colonnes Kanban */
+.kanban-column {
+    transition: all 0.3s ease;
+}
+
+.kanban-column.drag-over {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border-color: #3b82f6;
+    transform: scale(1.02);
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
+}
+
+/* Listes de tâches */
+.task-list {
+    transition: all 0.3s ease;
+    min-height: 100px;
+    border-radius: 8px;
+}
+
+.task-list.drag-over {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(147, 197, 253, 0.1) 100%);
+    border: 2px dashed #3b82f6;
+    border-radius: 8px;
+    box-shadow: inset 0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+/* Placeholder visuel pendant le drag */
+.drag-placeholder {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 197, 253, 0.2) 100%);
+    border: 2px dashed #3b82f6;
+    border-radius: 8px;
+    height: 60px;
+    margin: 0.5rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #3b82f6;
+    font-weight: 600;
+    font-size: 0.9rem;
+    animation: pulse 1.5s infinite;
+    transition: all 0.2s ease;
+}
+
+.drag-placeholder:hover {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: #2563eb;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
+/* Clone de la carte pendant le drag */
+.drag-clone {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.9;
+    transform: rotate(5deg) scale(1.05);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    transition: none;
+    cursor: grabbing;
+    border-radius: 8px;
+    background: white;
+}
+
+/* Animation de succès */
+.task-card.success-animation {
+    animation: successPulse 0.6s ease;
+}
+
+@keyframes successPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); background: #f0f9ff; }
+    100% { transform: scale(1); }
+}
+
+/* Indicateurs visuels pour mobile */
+@media (max-width: 768px) {
+    .task-card {
+        margin: 0.5rem 0;
+        padding: 0.75rem;
+    }
+    
+    .drag-clone {
+        max-width: 90vw;
+    }
+    
+    .kanban-column.drag-over {
+        transform: none; /* Éviter les problèmes sur mobile */
+    }
+}

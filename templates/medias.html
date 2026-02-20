@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Médias - SOS Thomas{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex justify-between items-center mb-8">
+        <h2 class="text-3xl font-bold text-gray-800">Photos, Appels, Messages</h2>
+        <a href="{{ url_for('dashboard') }}" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+            <i class="fas fa-arrow-left mr-2"></i>Retour
+        </a>
+    </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Photos -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <h3 class="text-xl font-semibold mb-4">Photos</h3>
+            <form method="POST" action="{{ url_for('upload_photo') }}" enctype="multipart/form-data" class="mb-4">
+                <input type="file" name="photo" accept="image/*" class="mb-2 w-full">
+                <button type="submit" class="bg-pink-500 text-white px-4 py-2 rounded w-full hover:bg-pink-600">
+                    <i class="fas fa-upload mr-2"></i>Uploader
+                </button>
+            </form>
+            <div class="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                {% for photo in data.photos %}
+                    <div class="relative">
+                        <img src="{{ url_for('static', filename='uploads/' + photo.filename) }}" 
+                             alt="{{ photo.original_name }}" 
+                             class="w-full h-20 object-cover rounded">
+                        <a href="{{ url_for('delete_item', item_type='photos', item_id=photo.id) }}" 
+                           class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 text-xs flex items-center justify-center hover:bg-red-600">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
+                {% else %}
+                    <p class="col-span-2 text-gray-500 text-center">Aucune photo</p>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Appels -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <h3 class="text-xl font-semibold mb-4">Appels</h3>
+            <form method="POST" action="{{ url_for('add_call') }}" class="mb-4">
+                {{ call_form.hidden_tag() }}
+                <div class="space-y-2">
+                    {{ call_form.contact(class="border rounded px-3 py-2 w-full") }}
+                    <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded w-full hover:bg-green-600">
+                        <i class="fas fa-phone mr-2"></i>Ajouter appel
+                    </button>
+                </div>
+            </form>
+            <div class="space-y-2 max-h-64 overflow-y-auto">
+                {% for call in data.calls %}
+                    <div class="bg-gray-50 p-2 rounded flex justify-between items-center">
+                        <div>
+                            <i class="fas fa-phone text-green-500 mr-2"></i>
+                            <span class="text-sm">{{ call.contact }}</span>
+                            <span class="text-xs text-gray-500 block">{{ call.date[:10] }} {{ call.date[11:16] if call.date|length > 16 else '' }}</span>
+                        </div>
+                        <a href="{{ url_for('delete_item', item_type='calls', item_id=call.id) }}" 
+                           class="text-red-500 hover:text-red-700">
+                            <i class="fas fa-trash text-sm"></i>
+                        </a>
+                    </div>
+                {% else %}
+                    <p class="text-gray-500 text-center">Aucun appel</p>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Messages -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <h3 class="text-xl font-semibold mb-4">Messages</h3>
+            <form method="POST" action="{{ url_for('add_message') }}" class="mb-4">
+                {{ message_form.hidden_tag() }}
+                <div class="space-y-2">
+                    {{ message_form.contact(class="border rounded px-3 py-2 w-full") }}
+                    {{ message_form.text(class="border rounded px-3 py-2 w-full h-20") }}
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded w-full hover:bg-blue-600">
+                        <i class="fas fa-comment mr-2"></i>Ajouter message
+                    </button>
+                </div>
+            </form>
+            <div class="space-y-2 max-h-64 overflow-y-auto">
+                {% for message in data.messages %}
+                    <div class="bg-gray-50 p-2 rounded">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <span class="font-semibold text-sm">{{ message.contact }}:</span>
+                                <p class="text-sm text-gray-700">{{ message.text }}</p>
+                                <span class="text-xs text-gray-500">{{ message.date[:10] }} {{ message.date[11:16] if message.date|length > 16 else '' }}</span>
+                            </div>
+                            <a href="{{ url_for('delete_item', item_type='messages', item_id=message.id) }}" 
+                               class="text-red-500 hover:text-red-700 ml-2">
+                                <i class="fas fa-trash text-sm"></i>
+                            </a>
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="text-gray-500 text-center">Aucun message</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

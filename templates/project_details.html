@@ -1,0 +1,5129 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }} - Détails du projet{% endblock %}
+
+{% block head %}
+<!-- Gestionnaire d'erreurs global pour capturer les erreurs JavaScript -->
+<script>
+window.addEventListener('error', function(e) {
+    console.error('🔥 Erreur JavaScript capturée:', {
+        message: e.message,
+        filename: e.filename,
+        lineno: e.lineno,
+        colno: e.colno,
+        stack: e.error?.stack
+    });
+});
+
+window.addEventListener('unhandledrejection', function(e) {
+    console.error('🔥 Promesse rejetée non gérée:', e.reason);
+});
+</script>
+<!-- Enhanced Drag & Drop pour Kanban -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/kanban-drag-drop.css') }}">
+<!-- <script src="{{ url_for('static', filename='js/drag-drop-final.js') }}"></script> -->
+{% endblock %}
+
+{% block content %}
+<!-- Project Details Content -->
+<div class="dashboard-content">
+    <!-- Project Header -->
+    <section class="project-header">
+        <div class="project-title-section">
+            <h1 class="project-title">{{ project.name }}</h1>
+            <div class="progress-section">
+                <div class="progress-info">
+                    <span class="progress-label">Avancement</span>
+                    <span class="progress-value">{{ progress }}%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ progress }}%"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+        <!-- Project Tabs -->
+        <nav class="project-tabs">
+            <button class="tab-btn" data-tab="overview" onclick="switchTab('overview')">
+                Vue d'ensemble
+            </button>
+            <button class="tab-btn" data-tab="tasks" onclick="switchTab('tasks')">
+                Tâches
+            </button>
+            <button class="tab-btn" data-tab="files" onclick="switchTab('files'); loadProjectFiles();">
+                Fichiers
+            </button>
+            <button class="tab-btn" data-tab="notes" onclick="switchTab('notes')">
+                Notes
+            </button>
+            <button class="tab-btn" data-tab="members" onclick="switchTab('members')">
+                Membres
+            </button>
+            <button class="tab-btn" data-tab="activity" onclick="switchTab('activity')">
+                Activité
+            </button>
+        </nav>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Overview Tab -->
+            <div id="overview" class="tab-pane active">
+                <div class="overview-grid">
+                    <!-- Left Column - Main Content -->
+                    <div class="left-column">
+                        <!-- Progress Chart -->
+                        <div class="card progress-card">
+                            <div class="card-header">
+                                <h3>Progression du projet</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container">
+                                    <canvas id="progressChart" width="550" height="280"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tasks Checkbox View -->
+                        <div class="card tasks-checkbox-card">
+                            <div class="card-header">
+                                <h3>Tâches à faire</h3>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <div class="task-counter">
+                                        <span id="completedCount">0</span> / <span id="totalCount">0</span>
+                                    </div>
+                                    <button class="btn btn-primary btn-sm" onclick="openTaskModal()">
+                                        <i class="fas fa-plus"></i> Nouvelle tâche
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="tasks-checkbox-list" id="tasksCheckboxList">
+                                    <!-- Tasks will be populated by JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column - Info & Stats -->
+                    <div class="right-column">
+                        <!-- Project Info -->
+                        <div class="card info-card">
+                            <div class="card-header">
+                                <h3>Informations du projet</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="info-list">
+                                    <div class="info-item">
+                                        <div class="info-icon deadline">
+                                            <i class="fas fa-calendar"></i>
+                                        </div>
+                                        <div class="info-content">
+                                            <div class="info-label">Date limite</div>
+                                            <div class="info-value">{{ project.end_date or 'Non définie' }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="info-item">
+                                        <div class="info-icon hours">
+                                            <i class="fas fa-clock"></i>
+                                        </div>
+                                        <div class="info-content">
+                                            <div class="info-label">Temps passé</div>
+                                            <div class="info-value">142 heures</div>
+                                        </div>
+                                    </div>
+                                    <div class="info-item">
+                                        <div class="info-icon budget">
+                                            <i class="fas fa-chart-pie"></i>
+                                        </div>
+                                        <div class="info-content">
+                                            <div class="info-label">Budget utilisé</div>
+                                            <div class="info-value">€8,500 / €15,000</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Task Progress Chart -->
+                        <div class="card task-progress-card">
+                            <div class="card-header">
+                                <h3>Progression des tâches</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="task-stats">
+                                    <div class="stat-item">
+                                        <div class="stat-number" id="totalTasks">{{ project_tasks|length }}</div>
+                                        <div class="stat-label">Total tâches</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-number" id="completedTasks">{{ project_tasks|selectattr('status', 'in', ['termine', 'fait', 'terminé'])|list|length }}</div>
+                                        <div class="stat-label">Terminées</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-number" id="progressPercentage">{{ progress }}%</div>
+                                        <div class="stat-label">Progression</div>
+                                    </div>
+                                </div>
+                                <div class="task-chart-container">
+                                    <canvas id="taskProgressChart" width="350" height="250"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Project Objective -->
+                        <div class="card objective-card">
+                            <div class="card-header">
+                                <h3>Objectif du projet</h3>
+                            </div>
+                            <div class="card-body">
+                                <p class="objective-text">
+                                    {{ project.description or 'Développer une application web complète pour la gestion de projets avec interface intuitive et fonctionnalités collaboratives.' }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Responsible Person -->
+                        <div class="card responsible-card">
+                            <div class="card-header">
+                                <h3>Responsable</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="person-info">
+                                    <div class="person-avatar">JD</div>
+                                    <div class="person-details">
+                                        <div class="person-name">{{ project.manager or 'Jean Dupont' }}</div>
+                                        <div class="person-role">Chef de projet</div>
+                                        <div class="person-contact">{{ project.email or 'jean.dupont@email.com' }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Upcoming Events -->
+                        <div class="card events-card">
+                            <div class="card-header">
+                                <h3>Événements à venir</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="events-list">
+                                    <div class="event-item">
+                                        <div class="event-date">
+                                            <div class="date-day">28</div>
+                                            <div class="date-month">Fév</div>
+                                        </div>
+                                        <div class="event-content">
+                                            <div class="event-title">Réunion d'avancement</div>
+                                            <div class="event-time">14:00 - 15:30</div>
+                                        </div>
+                                    </div>
+                                    <div class="event-item">
+                                        <div class="event-date">
+                                            <div class="date-day">05</div>
+                                            <div class="date-month">Mar</div>
+                                        </div>
+                                        <div class="event-content">
+                                            <div class="event-title">Validation milestone</div>
+                                            <div class="event-time">10:00 - 11:00</div>
+                                        </div>
+                                    </div>
+                                    <div class="event-item">
+                                        <div class="event-date">
+                                            <div class="date-day">12</div>
+                                            <div class="date-month">Mar</div>
+                                        </div>
+                                        <div class="event-content">
+                                            <div class="event-title">Livraison v1.0</div>
+                                            <div class="event-time">Fin de journée</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tasks Tab -->
+            <div id="tasks" class="tab-pane">
+                <div class="tasks-section">
+                    <div class="tasks-header">
+                        <button class="btn btn-primary" onclick="addTask()">
+                            <i class="fas fa-plus"></i> Nouvelle tâche
+                        </button>
+                    </div>
+
+                    <div class="kanban-board">
+                        <!-- À faire column -->
+                        <div class="kanban-column todo-column">
+                            <div class="column-header">
+                                <h4>À faire</h4>
+                                <span class="task-count">3</span>
+                            </div>
+                            <div class="task-list" id="kanbanTodoList">
+                                <!-- Les tâches créées par l'utilisateur s'afficheront ici -->
+                                <div class="task-card" data-task-id="test-1" style="cursor: grab; user-select: none;">
+                                    <div class="task-priority medium">Moyenne</div>
+                                    <h5 class="task-title">Tâche de test - DRAG MOI!</h5>
+                                    <p class="task-description">Cliquez et déplacez cette tâche pour tester le drag & drop</p>
+                                    <div class="task-meta">
+                                        <div class="task-assignee">Test</div>
+                                    </div>
+                                </div>
+                                <!-- Zone de drop vide -->
+                                <div class="drop-zone" data-column="kanbanTodoList">
+                                    <div class="drop-placeholder">📋 Déposez les tâches ici</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- En cours column -->
+                        <div class="kanban-column progress-column">
+                            <div class="column-header">
+                                <h4>En cours</h4>
+                                <span class="task-count">2</span>
+                            </div>
+                            <div class="task-list" id="kanbanProgressList">
+                                <!-- Les tâches en cours s'afficheront ici -->
+                                <div class="task-card" data-task-id="test-2" style="cursor: grab; user-select: none;">
+                                    <div class="task-priority high">Haute</div>
+                                    <h5 class="task-title">Tâche en cours - TEST 2</h5>
+                                    <p class="task-description">Autre tâche pour tester</p>
+                                    <div class="task-meta">
+                                        <div class="task-assignee">Test</div>
+                                    </div>
+                                </div>
+                                <!-- Zone de drop vide -->
+                                <div class="drop-zone" data-column="kanbanProgressList">
+                                    <div class="drop-placeholder">⚡ Déposez les tâches en cours ici</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Réalisées column -->
+                        <div class="kanban-column review-column">
+                            <div class="column-header">
+                                <h4>Réalisées</h4>
+                                <span class="task-count">1</span>
+                            </div>
+                            <div class="task-list" id="kanbanReviewList">
+                                <!-- Les tâches réalisées s'afficheront ici -->
+                                <!-- Zone de drop vide -->
+                                <div class="drop-zone" data-column="kanbanReviewList">
+                                    <div class="drop-placeholder">✅ Déposez les tâches terminées ici</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Files Tab -->
+            <div id="files" class="tab-pane">
+                <div class="files-section">
+                    <div class="files-header">
+                        <h3>Fichiers du projet</h3>
+                        <div class="files-actions">
+                            <button class="btn btn-primary" onclick="openFileUploadModal()">
+                                <i class="fas fa-upload"></i> Téléverser
+                            </button>
+                            <button class="btn btn-danger" id="deleteSelectedBtn" onclick="deleteSelectedFiles()" style="display: none;">
+                                <i class="fas fa-trash"></i> Supprimer la sélection
+                            </button>
+                        </div>
+                    </div>
+                    <div class="files-controls">
+                        <label class="select-all-container">
+                            <input type="checkbox" id="selectAllFiles" onchange="toggleSelectAll()">
+                            <span>Sélectionner tout</span>
+                        </label>
+                    </div>
+                    <div class="files-grid" id="projectFilesGrid">
+                        <!-- Les fichiers seront chargés dynamiquement -->
+                        <div class="empty-files-message" id="emptyFilesMessage">
+                            <i class="fas fa-folder-open"></i>
+                            <p>Aucun fichier dans ce projet</p>
+                            <small>Cliquez sur "Téléverser" pour ajouter des fichiers</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes Tab -->
+            <div id="notes" class="tab-pane">
+                <div class="notes-section">
+                    <div class="notes-header">
+                        <h3>Notes du projet</h3>
+                        <button class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Nouvelle note
+                        </button>
+                    </div>
+                    <div class="notes-list">
+                        <div class="note-card">
+                            <div class="note-header">
+                                <div class="note-title">Réunion kickoff - 15 Jan</div>
+                                <div class="note-date">15 Jan 2024</div>
+                            </div>
+                            <div class="note-content">
+                                <p>Points clés discutés lors de la réunion de lancement :</p>
+                                <ul>
+                                    <li>Définition des objectifs principaux</li>
+                                    <li>Validation du planning prévisionnel</li>
+                                    <li>Affectation des responsabilités</li>
+                                </ul>
+                            </div>
+                            <div class="note-author">Par Jean Dupont</div>
+                        </div>
+                        <div class="note-card">
+                            <div class="note-header">
+                                <div class="note-title">Décision architecture technique</div>
+                                <div class="note-date">22 Jan 2024</div>
+                            </div>
+                            <div class="note-content">
+                                <p>Choix retenu pour la stack technique :</p>
+                                <ul>
+                                    <li>Backend : Node.js + Express</li>
+                                    <li>Base de données : PostgreSQL</li>
+                                    <li>Frontend : React + Tailwind CSS</li>
+                                </ul>
+                            </div>
+                            <div class="note-author">Par Marie Laurent</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Members Tab -->
+            <div id="members" class="tab-pane">
+                <div class="members-section">
+                    <div class="members-header">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3>Membres du projet</h3>
+                                <p class="text-gray-600">Gérez les personnes et leurs rôles dans ce projet</p>
+                            </div>
+                            <div class="flex gap-3">
+                                <button onclick="openManageRolesModal()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2">
+                                    <i class="fas fa-user-tag"></i>
+                                    <span>Gérer les rôles</span>
+                                </button>
+                                <button onclick="openAddMemberModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                                    <i class="fas fa-user-plus"></i>
+                                    <span>Ajouter un membre</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="members-content">
+                        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                            <div class="overflow-x-auto">
+                                <table class="w-full" id="projectMembersTable">
+                                    <thead class="bg-gray-50 border-b border-gray-200">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Membre</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rôle</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Disponibilité</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compétences</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200" id="projectMembersTableBody">
+                                        <!-- Les membres seront chargés dynamiquement -->
+                                    </tbody>
+                                </table>
+                                <div id="noProjectMembersMessage" class="text-center py-8 text-gray-500 hidden">
+                                    <i class="fas fa-users text-4xl mb-3"></i>
+                                    <p>Aucun membre dans ce projet</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activity Tab -->
+            <div id="activity" class="tab-pane">
+                <div class="activity-section">
+                    <div class="activity-header">
+                        <h3>Activité récente</h3>
+                    </div>
+                    <div class="activity-feed">
+                        <div class="activity-item">
+                            <div class="activity-icon task-completed">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">Tâche terminée</div>
+                                <div class="activity-description">Configuration environnement de développement</div>
+                                <div class="activity-time">Il y a 2 heures</div>
+                                <div class="activity-author">Par Thomas Bernard</div>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon comment">
+                                <i class="fas fa-comment"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">Nouveau commentaire</div>
+                                <div class="activity-description">Sur la tâche "Développement API REST"</div>
+                                <div class="activity-time">Il y a 4 heures</div>
+                                <div class="activity-author">Par Marie Laurent</div>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon file-added">
+                                <i class="fas fa-file"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">Fichier ajouté</div>
+                                <div class="activity-description">Maquettes UI.png</div>
+                                <div class="activity-time">Hier</div>
+                                <div class="activity-author">Par Thomas Bernard</div>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon task-created">
+                                <i class="fas fa-plus"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">Tâche créée</div>
+                                <div class="activity-description">Tests unitaires pour les modules critiques</div>
+                                <div class="activity-time">Il y a 2 jours</div>
+                                <div class="activity-author">Par Jean Dupont</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+/* Project Tracking Styles */
+.dashboard-content {
+    padding: 2rem;
+    overflow-y: auto;
+    background: #FAF6F0;
+    min-height: calc(100vh - 80px);
+}
+
+/* Custom scrollbar */
+.main-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.main-content::-webkit-scrollbar-track {
+    background: #F0E6D8;
+    border-radius: 4px;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+    background: #87CEEB;
+    border-radius: 4px;
+}
+
+.main-content::-webkit-scrollbar-thumb:hover {
+    background: #6BB6D6;
+}
+
+/* Project Header */
+.project-header {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border: 1px solid #E8DDD0;
+}
+
+.project-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2C3E50;
+    margin-bottom: 1rem;
+}
+
+.progress-section {
+    max-width: 400px;
+}
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.progress-label {
+    color: #6B7280;
+    font-size: 0.875rem;
+}
+
+.progress-value {
+    color: #2C3E50;
+    font-weight: 600;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 12px;
+    background: #F0E6D8;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #87CEEB, #98D8C8);
+    border-radius: 6px;
+    transition: width 0.3s ease;
+}
+
+/* Tabs */
+.project-tabs {
+    display: flex;
+    background: white;
+    border-radius: 12px;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border: 1px solid #E8DDD0;
+}
+
+.tab-btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    background: transparent;
+    color: #6B7280;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+    background: #F7F3ED;
+    color: #2C3E50;
+}
+
+.tab-btn.active {
+    background: #87CEEB;
+    color: white;
+}
+
+/* Tab Content */
+.tab-content {
+    background: white;
+    border-radius: 16px;
+    padding: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border: 1px solid #E8DDD0;
+}
+
+.tab-pane {
+    display: none;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+/* Overview Grid */
+.overview-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 1rem;
+    height: auto;
+    min-height: calc(100vh - 220px);
+    overflow: hidden;
+}
+
+.left-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    height: auto;
+    max-height: calc(100vh - 220px);
+    overflow: hidden;
+}
+
+.right-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    height: auto;
+    max-height: calc(100vh - 300px);
+    overflow-y: auto;
+}
+
+/* Tasks Checkbox Card */
+.tasks-checkbox-card {
+    background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
+    border: 1px solid #E2E8F0;
+    display: flex;
+    flex-direction: column;
+    min-height: 450px;
+    max-height: calc(100vh - 260px);
+}
+
+.tasks-checkbox-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.task-counter {
+    background: #87CEEB;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.tasks-checkbox-list {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 300px;
+}
+
+.task-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #E2E8F0;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    min-height: 60px;
+}
+
+.task-checkbox-item:hover {
+    background: #F8FAFC;
+    border-color: #87CEEB;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.task-checkbox-item.completed {
+    opacity: 0.7;
+    background: #F0FDF4;
+}
+
+.task-checkbox-item.completed .task-checkbox-label {
+    text-decoration: line-through;
+    color: #6B7280;
+}
+
+.task-checkbox-item.in-progress {
+    background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%);
+    border-left: 4px solid #f59e0b;
+}
+
+.task-checkbox-item.in-progress .task-checkbox-label {
+    color: #92400e;
+    font-weight: 600;
+}
+
+.task-checkbox {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #D1D5DB;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.task-checkbox.checked {
+    background: #87CEEB;
+    border-color: #87CEEB;
+}
+
+.task-checkbox.checked::after {
+    content: '✓';
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.task-checkbox-content {
+    flex: 1;
+    cursor: pointer;
+}
+
+.task-checkbox-label {
+    font-weight: 500;
+    color: #2C3E50;
+    margin-bottom: 0.25rem;
+    line-height: 1.4;
+    font-size: 15px;
+}
+
+.task-description-preview {
+    font-size: 0.8rem;
+    color: #6B7280;
+    margin-top: 0.5rem;
+    line-height: 1.4;
+    font-style: italic;
+}
+
+/* Status Menu Styles */
+.status-menu {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e5e7eb;
+    min-width: 180px;
+    overflow: hidden;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.status-menu-header {
+    padding: 12px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-menu-options {
+    padding: 4px 0;
+}
+
+.status-option {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    background: white;
+    width: 100%;
+    text-align: left;
+}
+
+.status-option:hover {
+    background: #f3f4f6;
+}
+
+.status-option.selected {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.status-icon {
+    font-size: 16px;
+    margin-right: 12px;
+    width: 20px;
+    text-align: center;
+}
+
+.status-label {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.status-option.selected .status-label {
+    color: #1d4ed8;
+}
+
+.status-check {
+    color: #1d4ed8;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.task-checkbox-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    color: #6B7280;
+}
+
+.task-priority-badge {
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.task-priority-badge.high {
+    background: #FEE2E2;
+    color: #DC2626;
+}
+
+.task-priority-badge.medium {
+    background: #FEF3C7;
+    color: #D97706;
+}
+
+.task-priority-badge.low {
+    background: #D1FAE5;
+    color: #059669;
+}
+
+/* Task Actions */
+.task-checkbox-item {
+    position: relative;
+}
+
+.task-actions {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: flex;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.task-checkbox-item:hover .task-actions {
+    opacity: 1;
+}
+
+.task-action-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.75rem;
+}
+
+.task-action-btn.edit {
+    background: #FEF3C7;
+    color: #D97706;
+}
+
+.task-action-btn.edit:hover {
+    background: #FDE68A;
+}
+
+.task-action-btn.delete {
+    background: #FEE2E2;
+    color: #DC2626;
+}
+
+.task-action-btn.delete:hover {
+    background: #FECACA;
+}
+
+/* Buttons */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+
+.btn-primary {
+    background: #87CEEB;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #6BB6D6;
+    transform: translateY(-1px);
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #E5E7EB;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1F2937;
+    margin: 0;
+}
+
+.modal-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #F3F4F6;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+    background: #E5E7EB;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    padding: 1.5rem;
+    border-top: 1px solid #E5E7EB;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+/* Form Styles */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #D1D5DB;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: #87CEEB;
+    box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.1);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.btn-secondary {
+    background: #6B7280;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #4B5563;
+}
+
+.btn-danger {
+    background: #EF4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #DC2626;
+}
+
+.progress-card {
+    background: linear-gradient(135deg, #E6F3FF 0%, #F0F8FF 100%);
+    border: 1px solid #B8D4E8;
+    min-height: 350px;
+    max-height: calc(100vh - 260px);
+}
+
+.info-card {
+    background: linear-gradient(135deg, #FFF4E6 0%, #FFFAF0 100%);
+    border: 1px solid #FFD4A3;
+}
+
+.right-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    height: 100%;
+}
+
+.objective-card {
+    background: linear-gradient(135deg, #F0FFF4 0%, #F8FFF8 100%);
+    border: 1px solid #B8E6C8;
+}
+
+.responsible-card {
+    background: linear-gradient(135deg, #F5F0FF 0%, #FAF5FF 100%);
+    border: 1px solid #D8B8E8;
+}
+
+.events-card {
+    background: linear-gradient(135deg, #FFF0F5 0%, #FFF8FA 100%);
+    border: 1px solid #FFB8D8;
+}
+
+.task-progress-card {
+    background: linear-gradient(135deg, #F0F9FF 0%, #F8FAFC 100%);
+    border: 1px solid #BAE6FD;
+}
+
+/* Task Stats */
+.task-stats {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2C3E50;
+    margin-bottom: 0.25rem;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: #6B7280;
+    font-weight: 500;
+}
+
+/* Task Chart Container */
+.task-chart-container {
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
+}
+
+/* Cards */
+.card {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.card-header h3 {
+    margin: 0;
+    font-weight: 600;
+    color: #2C3E50;
+}
+
+.card-body {
+    padding: 1rem;
+}
+
+/* Tasks card body - not scrollable */
+.tasks-checkbox-card .card-body {
+    padding: 1rem;
+}
+
+/* Tasks list - scrollable */
+.tasks-checkbox-list {
+    overflow-y: auto;
+    max-height: 400px;
+}
+
+/* Progress Chart */
+.chart-container {
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
+}
+
+/* Info List */
+.info-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
+}
+
+.info-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.875rem;
+}
+
+.info-icon.deadline {
+    background: #87CEEB;
+}
+
+.info-icon.hours {
+    background: #98D8C8;
+}
+
+.info-icon.budget {
+    background: #FFB8B8;
+}
+
+.info-content {
+    flex: 1;
+}
+
+.info-label {
+    color: #6B7280;
+    font-size: 14px;
+}
+
+.info-value {
+    color: #2C3E50;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+/* Objective */
+.objective-text {
+    color: #2C3E50;
+    line-height: 1.6;
+}
+
+/* Person Info */
+.person-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.person-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #87CEEB;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1.125rem;
+}
+
+.person-name {
+    font-weight: 600;
+    color: #2C3E50;
+}
+
+.person-role {
+    color: #6B7280;
+    font-size: 0.875rem;
+}
+
+.person-contact {
+    color: #87CEEB;
+    font-size: 0.875rem;
+}
+
+/* Events */
+.events-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.event-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
+}
+
+.event-date {
+    background: #FFB8B8;
+    color: white;
+    border-radius: 8px;
+    padding: 0.5rem;
+    text-align: center;
+    min-width: 50px;
+}
+
+.date-day {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.date-month {
+    font-size: 0.75rem;
+}
+
+.event-content {
+    flex: 1;
+}
+
+.event-title {
+    font-weight: 600;
+    color: #2C3E50;
+}
+
+.event-time {
+    color: #6B7280;
+    font-size: 0.875rem;
+}
+
+/* Tasks */
+.tasks-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.kanban-board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    height: calc(100vh - 250px);
+}
+
+.kanban-column {
+    background: #F7F3ED;
+    border-radius: 12px;
+    padding: 0.75rem;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.2s ease;
+}
+
+.kanban-column.drag-over {
+    background: #E6F3FF;
+    border: 2px dashed #87CEEB;
+}
+
+.column-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #E8DDD0;
+}
+
+.column-header h4 {
+    margin: 0;
+    font-weight: 600;
+    color: #2C3E50;
+}
+
+.task-count {
+    background: #87CEEB;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.task-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid #E8DDD0;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+}
+
+.task-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.task-card.dragging {
+    opacity: 0.5;
+    transform: rotate(5deg) scale(1.05);
+    z-index: 1000;
+    cursor: grabbing;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    transition: none;
+}
+
+.task-card.drag-over {
+    border-color: #87CEEB;
+    box-shadow: 0 0 0 3px #87CEEB;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+}
+
+.kanban-column.drag-over {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border-color: #87CEEB;
+    transform: scale(1.02);
+}
+
+.task-list.drag-over {
+    background: rgba(135, 206, 235, 0.1);
+    border: 2px dashed #87CEEB;
+    border-radius: 8px;
+    min-height: 100px;
+    transition: all 0.3s ease;
+}
+
+.drag-placeholder {
+    background: rgba(135, 206, 235, 0.2);
+    border: 2px dashed #87CEEB;
+    border-radius: 8px;
+    height: 60px;
+    margin: 0.5rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #87CEEB;
+    font-weight: 500;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
+.drag-clone {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.9;
+    transform: rotate(5deg) scale(1.05);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    transition: none;
+    cursor: grabbing;
+}
+
+.task-priority {
+    padding: 0.2rem 0.5rem;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    display: inline-block;
+}
+
+.task-priority.high {
+    background: #FFB8B8;
+    color: #721C24;
+}
+
+.task-priority.medium {
+    background: #FFE4B8;
+    color: #8B5A00;
+}
+
+.task-priority.low {
+    background: #B8E6B8;
+    color: #2D5A2D;
+}
+
+.task-title {
+    font-weight: 600;
+    color: #2C3E50;
+    margin-bottom: 0.4rem;
+    font-size: 0.9rem;
+}
+
+.task-description {
+    color: #6B7280;
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
+}
+
+.task-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.task-assignee {
+    background: #87CEEB;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.task-due {
+    color: #6B7280;
+    font-size: 0.875rem;
+}
+
+/* Files */
+.files-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.files-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1rem;
+}
+
+.file-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: #F7F3ED;
+    border-radius: 12px;
+    border: 1px solid #E8DDD0;
+    transition: all 0.2s ease;
+    position: relative;
+    min-height: 80px;
+}
+
+.file-card:hover {
+    background: #F0E6D8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.file-card.selected {
+    border-color: #87CEEB;
+    background: #E8F4F8;
+}
+
+.file-checkbox {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.file-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    color: white;
+    flex-shrink: 0;
+    margin-left: 1.5rem;
+}
+
+.file-icon.pdf { background: linear-gradient(135deg, #FF6B6B, #DC2626); }
+.file-icon.doc { background: linear-gradient(135deg, #4ECDC4, #2563EB); }
+.file-icon.excel { background: linear-gradient(135deg, #96CEB4, #059669); }
+.file-icon.image { background: linear-gradient(135deg, #45B7D1, #7C3AED); }
+.file-icon.text { background: linear-gradient(135deg, #6B7280, #374151); }
+.file-icon.default { background: linear-gradient(135deg, #9CA3AF, #6B7280); }
+
+.file-info {
+    flex: 1;
+    min-width: 0;
+    margin-right: 0.5rem;
+}
+
+.file-name {
+    font-weight: 600;
+    color: #2C3E50;
+    font-size: 0.95rem;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+}
+
+.file-meta {
+    color: #6B7280;
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+    line-height: 1.2;
+}
+
+.file-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.file-action {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    background: #F3F4F6;
+    color: #6B7280;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+}
+
+.file-action:hover {
+    background: #87CEEB;
+    color: white;
+    transform: scale(1.05);
+}
+
+.file-action.delete:hover {
+    background: #EF4444;
+}
+
+.files-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.files-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.files-controls {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: #F7F3ED;
+    border-radius: 8px;
+    border: 1px solid #E8DDD0;
+}
+
+.select-all-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #2C3E50;
+    user-select: none;
+}
+
+.select-all-container input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.empty-files-message {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #6B7280;
+}
+
+.empty-files-message i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-files-message p {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+.empty-files-message small {
+    opacity: 0.7;
+}
+
+/* Notes */
+.notes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
+}
+
+.note-card {
+    background: #F7F3ED;
+    border-radius: 12px;
+    padding: 1rem;
+    border: 1px solid #E8DDD0;
+}
+
+.note-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.note-title {
+    font-weight: 600;
+    color: #2C3E50;
+}
+
+.note-date {
+    color: #6B7280;
+    font-size: 0.875rem;
+}
+
+.note-content {
+    color: #2C3E50;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+.note-content ul {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+
+.note-content li {
+    margin-bottom: 0.25rem;
+}
+
+.note-author {
+    color: #87CEEB;
+    font-size: 0.875rem;
+    font-style: italic;
+}
+
+/* Activity */
+.activity-header {
+    margin-bottom: 1rem;
+}
+
+.activity-header h3 {
+    margin: 0;
+    font-weight: 600;
+    color: #2C3E50;
+}
+
+.activity-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
+}
+
+.activity-item {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: #F7F3ED;
+    border-radius: 8px;
+    border: 1px solid #E8DDD0;
+}
+
+.activity-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+    font-size: 0.875rem;
+}
+
+.activity-icon.task-completed {
+    background: #98D8C8;
+}
+
+.activity-icon.comment {
+    background: #87CEEB;
+}
+
+.activity-icon.file-added {
+    background: #FFB8B8;
+}
+
+.activity-icon.task-created {
+    background: #B8E6B8;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-title {
+    font-weight: 600;
+    color: #2C3E50;
+    margin-bottom: 0.25rem;
+}
+
+.activity-description {
+    color: #6B7280;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.activity-time {
+    color: #9CA3AF;
+    font-size: 0.75rem;
+}
+
+.activity-author {
+    color: #87CEEB;
+    font-size: 0.75rem;
+}
+
+/* Buttons */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-primary {
+    background: #87CEEB;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #6BB6D6;
+    transform: translateY(-1px);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .dashboard-content {
+        padding: 1rem;
+    }
+    
+    .overview-grid {
+        grid-template-columns: 1fr;
+        height: auto;
+        gap: 1.5rem;
+    }
+    
+    .left-column,
+    .right-column {
+        height: auto;
+    }
+    
+    .kanban-board {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-content {
+        padding: 0.5rem;
+    }
+    
+    .project-title {
+        font-size: 1.5rem;
+    }
+    
+    .project-tabs {
+        overflow-x: auto;
+    }
+    
+    .files-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .overview-grid {
+        height: auto;
+    }
+    
+    .kanban-board {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+    
+    .task-checkbox-item {
+        padding: 0.5rem;
+    }
+    
+    .task-checkbox-label {
+        font-size: 0.9rem;
+    }
+}
+</style>
+
+<script>
+function switchTab(tabName) {
+    console.log('Changement d\'onglet vers:', tabName);
+    
+    // Sauvegarder l'onglet sélectionné dans localStorage
+    localStorage.setItem('activeProjectTab', tabName);
+    
+    document.querySelectorAll('.tab-pane').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    const targetPane = document.getElementById(tabName);
+    const targetBtn = document.querySelector(`[data-tab="${tabName}"]`);
+    
+    if (targetPane) {
+        targetPane.classList.add('active');
+        console.log('Onglet activé:', tabName);
+        
+        // Charger les données spécifiques à l'onglet si nécessaire
+        if (tabName === 'members') {
+            console.log('Chargement des membres pour l\'onglet membres');
+            if (typeof loadRoles === 'function') {
+                loadRoles();
+            }
+            if (typeof loadProjectMembers === 'function') {
+                loadProjectMembers();
+            }
+        }
+    } else {
+        console.error('Onglet non trouvé:', tabName);
+    }
+    
+    if (targetBtn) {
+        targetBtn.classList.add('active');
+    } else {
+        console.error('Bouton d\'onglet non trouvé:', tabName);
+    }
+}
+
+function addTask() {
+    openTaskModal();
+}
+
+// Modal functions
+let currentEditingTaskId = null;
+
+function openTaskModal(taskId = null) {
+    const modal = document.getElementById('taskModal');
+    const title = document.getElementById('taskModalTitle');
+    const deleteBtn = document.getElementById('deleteTaskBtn');
+    
+    currentEditingTaskId = taskId;
+    
+    if (taskId) {
+        // Edit mode
+        if (title && title.textContent !== undefined) title.textContent = 'Modifier la tâche';
+        if (deleteBtn) deleteBtn.style.display = 'inline-flex';
+        
+        // Load fresh task data from server
+        fetch(`/api/get_project_tasks/{{ project.id }}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const task = data.tasks.find(t => t.id === taskId);
+                    
+                    if (task) {
+                        document.getElementById('taskName').value = task.name || '';
+                        document.getElementById('taskDescription').value = task.description || '';
+                        document.getElementById('taskPriority').value = task.priority || 'moyenne';
+                        document.getElementById('taskStatus').value = task.status || 'a-faire';
+                        document.getElementById('taskDueDate').value = task.due_date || '';
+                        document.getElementById('taskAssignee').value = task.assignee || '';
+                        document.getElementById('taskTags').value = task.tags ? task.tags.join(', ') : '';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error loading task data:', error);
+                showFlashMessage('Erreur lors du chargement des données de la tâche', 'error');
+            });
+    } else {
+        // Create mode
+        if (title && title.textContent !== undefined) title.textContent = 'Nouvelle tâche';
+        if (deleteBtn) deleteBtn.style.display = 'none';
+        
+        // Reset form
+        document.getElementById('taskForm').reset();
+        document.getElementById('taskPriority').value = 'moyenne';
+        document.getElementById('taskStatus').value = 'a-faire';
+    }
+    
+    modal.classList.add('show');
+}
+
+function closeTaskModal() {
+    const modal = document.getElementById('taskModal');
+    modal.classList.remove('show');
+    currentEditingTaskId = null;
+}
+
+function editTask(taskId) {
+    openTaskModal(taskId);
+}
+
+function confirmDeleteTask(taskId) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette tâche ?')) {
+        deleteTaskById(taskId);
+    }
+}
+
+function deleteTask() {
+    if (currentEditingTaskId && confirm('Êtes-vous sûr de vouloir supprimer cette tâche ?')) {
+        deleteTaskById(currentEditingTaskId);
+        closeTaskModal();
+    }
+}
+
+function deleteTaskById(taskId) {
+    fetch(`/api/delete_task/${taskId}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Refresh task list
+            initializeTaskCheckboxView();
+            
+            // Refresh charts
+            drawProgressChart();
+            drawTaskProgressChart();
+            
+            // Show success message
+            showFlashMessage('Tâche supprimée avec succès', 'success');
+        } else {
+            showFlashMessage('Erreur lors de la suppression de la tâche', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting task:', error);
+        showFlashMessage('Erreur lors de la suppression de la tâche', 'error');
+    });
+}
+
+function saveTask(event) {
+    event.preventDefault();
+    
+    const formData = {
+        name: document.getElementById('taskName').value,
+        description: document.getElementById('taskDescription').value,
+        priority: document.getElementById('taskPriority').value,
+        status: document.getElementById('taskStatus').value,
+        dueDate: document.getElementById('taskDueDate').value,
+        assignee: document.getElementById('taskAssignee').value,
+        tags: document.getElementById('taskTags').value.split(',').map(tag => tag.trim()).filter(tag => tag)
+    };
+    
+    const projectId = '{{ project.id }}';
+    
+    if (currentEditingTaskId) {
+        // Update existing task
+        fetch(`/api/update_task/${currentEditingTaskId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                closeTaskModal();
+                showFlashMessage('Tâche mise à jour avec succès', 'success');
+                
+                // Wait a bit for server to process, then refresh views
+                setTimeout(() => {
+                    try {
+                        initializeTaskCheckboxView();
+                    } catch (error) {
+                        console.error('Error refreshing task view:', error);
+                    }
+                    
+                    try {
+                        drawProgressChart();
+                    } catch (error) {
+                        console.error('Error drawing progress chart:', error);
+                    }
+                    
+                    try {
+                        drawTaskProgressChart();
+                    } catch (error) {
+                        console.error('Error drawing task chart:', error);
+                    }
+                    
+                    // Réinitialiser le drag & drop pour les nouvelles tâches
+                    try {
+                        if (typeof window.KanbanDragDrop !== 'undefined') {
+                            window.KanbanDragDrop.init();
+                        }
+                    } catch (error) {
+                        console.error('Error reinitializing drag & drop:', error);
+                    }
+                }, 200);
+            } else {
+                console.error('Server error:', data);
+                showFlashMessage(data.error || 'Erreur lors de la mise à jour de la tâche', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating task:', error);
+            showFlashMessage('Erreur lors de la mise à jour de la tâche: ' + error.message, 'error');
+        });
+    } else {
+        // Create new task
+        fetch(`/api/add_task_to_project/${projectId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                closeTaskModal();
+                showFlashMessage('Tâche créée avec succès', 'success');
+                
+                // Wait a bit for server to process, then refresh views
+                setTimeout(() => {
+                    try {
+                        initializeTaskCheckboxView();
+                    } catch (error) {
+                        console.error('Error refreshing task view:', error);
+                    }
+                    
+                    try {
+                        drawProgressChart();
+                    } catch (error) {
+                        console.error('Error drawing progress chart:', error);
+                    }
+                    
+                    try {
+                        drawTaskProgressChart();
+                    } catch (error) {
+                        console.error('Error drawing task chart:', error);
+                    }
+                    
+                    // Réinitialiser le drag & drop pour les nouvelles tâches
+                    try {
+                        if (typeof window.KanbanDragDrop !== 'undefined') {
+                            window.KanbanDragDrop.init();
+                        }
+                    } catch (error) {
+                        console.error('Error reinitializing drag & drop:', error);
+                    }
+                }, 200);
+            } else {
+                console.error('Server error:', data);
+                showFlashMessage(data.error || 'Erreur lors de la création de la tâche', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error creating task:', error);
+            showFlashMessage('Erreur lors de la création de la tâche: ' + error.message, 'error');
+        });
+    }
+}
+
+function showFlashMessage(message, type = 'success') {
+    // Create flash message element
+    const flashDiv = document.createElement('div');
+    flashDiv.className = 'flash-message';
+    flashDiv.textContent = message;
+    flashDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#10b981' : '#ef4444'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 10000;
+        font-size: 14px;
+    `;
+    
+    document.body.appendChild(flashDiv);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        if (flashDiv.parentNode) {
+            flashDiv.parentNode.removeChild(flashDiv);
+        }
+    }, 3000);
+}
+
+// Update project progress in main projects page
+function updateProjectProgressInMainPage(projectId, newProgress) {
+    console.log('Updating project progress in main page:', projectId, 'to:', newProgress);
+    
+    // Store in localStorage for cross-page synchronization
+    try {
+        localStorage.setItem(`project_progress_${projectId}`, newProgress);
+        console.log('Successfully stored progress in localStorage:', `project_progress_${projectId}`, '=', newProgress);
+    } catch (error) {
+        console.error('Error storing progress in localStorage:', error);
+    }
+    
+    // Create a custom event to notify other pages
+    const event = new CustomEvent('projectProgressUpdated', {
+        detail: { projectId, progress: newProgress }
+    });
+    window.dispatchEvent(event);
+    console.log('Dispatched projectProgressUpdated event');
+}
+
+// Listen for progress updates from other pages
+window.addEventListener('storage', function(e) {
+    if (e.key && e.key.startsWith('project_progress_')) {
+        const projectId = e.key.replace('project_progress_', '');
+        const progress = e.newValue;
+        
+        // Update current page if it's the same project
+        if (window.location.pathname.includes(`/project/${projectId}`)) {
+            const progressElements = document.querySelectorAll('.progress-value, .progress-percentage');
+            progressElements.forEach(el => {
+                el.textContent = progress + '%';
+            });
+            
+            const progressFill = document.querySelector('.progress-fill');
+            if (progressFill) {
+                progressFill.style.width = progress + '%';
+            }
+        }
+    }
+});
+
+// Fonctions pour la gestion des fichiers
+function openFileUploadModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.innerHTML = `
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Téléverser un fichier</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="fileUploadForm" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="fileInput" class="form-label">Choisir un fichier</label>
+                            <input type="file" class="form-control" id="fileInput" name="file" required>
+                        </div>
+                        <div class="progress mt-3" id="uploadProgress" style="display: none;">
+                            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" onclick="uploadFile()">Téléverser</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    modal.style.display = 'block';
+    modal.classList.add('show');
+    
+    // Fermer le modal
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal || e.target.classList.contains('btn-close') || e.target.classList.contains('btn-secondary')) {
+            document.body.removeChild(modal);
+        }
+    });
+}
+
+function uploadFile() {
+    const form = document.getElementById('fileUploadForm');
+    const fileInput = document.getElementById('fileInput');
+    const uploadButton = document.querySelector('.modal-footer .btn-primary');
+    
+    // Vérifier si un fichier est sélectionné
+    if (!fileInput.files || fileInput.files.length === 0) {
+        alert('Veuillez sélectionner un fichier');
+        return;
+    }
+    
+    // Empêcher les téléversements multiples
+    if (uploadButton && uploadButton.innerHTML !== undefined) {
+        uploadButton.disabled = true;
+        uploadButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Téléversement...';
+    }
+    
+    const formData = new FormData(form);
+    const progressDiv = document.getElementById('uploadProgress');
+    
+    // Afficher la progression
+    if (progressDiv) {
+        progressDiv.style.display = 'block';
+    }
+    
+    console.log('Téléversement de', fileInput.files.length, 'fichier(s)');
+    
+    fetch(`/api/project/{{ project.id }}/upload_file`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        console.log('Status de la réponse:', response.status);
+        if (!response.ok) {
+            // Si c'est une erreur 401 ou 403, c'est probablement un problème d'authentification
+            if (response.status === 401 || response.status === 403) {
+                throw new Error('Erreur d\'authentification. Vous êtes peut-être déconnecté. Veuillez vous reconnecter.');
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Réponse du serveur:', data);
+        if (data.success) {
+            alert('Fichier téléversé avec succès!');
+            // Fermer le modal de manière plus sécurisée
+            const modal = document.querySelector('.modal.fade');
+            if (modal && modal.parentNode) {
+                modal.parentNode.removeChild(modal);
+            }
+            // Recharger les fichiers avec un petit délai pour éviter les conflits
+            setTimeout(() => {
+                loadProjectFiles();
+            }, 100);
+        } else {
+            alert('Erreur: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur détaillée:', error);
+        alert('Erreur lors du téléversement: ' + error.message);
+    })
+    .finally(() => {
+        // Cacher la progression et réactiver le bouton
+        if (progressDiv) {
+            progressDiv.style.display = 'none';
+        }
+        if (uploadButton) {
+            uploadButton.disabled = false;
+            uploadButton.innerHTML = 'Téléverser';
+        }
+    });
+}
+
+function loadProjectFiles() {
+    console.log('Chargement des fichiers pour le projet {{ project.id }}...');
+    fetch(`/api/project/{{ project.id }}/files`)
+    .then(response => {
+        console.log('Status de la réponse (loadProjectFiles):', response.status);
+        if (!response.ok) {
+            // Si c'est une erreur 401 ou 403, c'est probablement un problème d'authentification
+            if (response.status === 401 || response.status === 403) {
+                throw new Error('Erreur d\'authentification. Vous êtes peut-être déconnecté.');
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Réponse du serveur (loadProjectFiles):', data);
+        if (data.success) {
+            displayProjectFiles(data.files);
+        } else {
+            console.error('Erreur API:', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur lors du chargement des fichiers:', error);
+    });
+}
+
+function displayProjectFiles(files) {
+    console.log('📁 displayProjectFiles appelé avec', files.length, 'fichiers');
+    console.log('📄 Détails des fichiers:', files.map(f => f.original_name));
+    
+    const filesGrid = document.getElementById('projectFilesGrid');
+    const emptyMessage = document.getElementById('emptyFilesMessage');
+    
+    console.log('🎯 Elements trouvés - filesGrid:', !!filesGrid, 'emptyMessage:', !!emptyMessage);
+    
+    if (files.length === 0) {
+        if (emptyMessage) {
+            emptyMessage.style.display = 'block';
+        }
+        // Supprimer les cartes de fichiers existantes
+        const existingCards = filesGrid.querySelectorAll('.file-card');
+        existingCards.forEach(card => card.remove());
+        return;
+    }
+    
+    // Masquer le message vide
+    if (emptyMessage) {
+        emptyMessage.style.display = 'none';
+    }
+    
+    // Supprimer les cartes existantes
+    const existingCards = filesGrid.querySelectorAll('.file-card');
+    existingCards.forEach(card => card.remove());
+    
+    // Ajouter les nouvelles cartes
+    files.forEach(file => {
+        const fileCard = createFileCard(file);
+        filesGrid.appendChild(fileCard);
+    });
+}
+
+function createFileCard(file) {
+    const card = document.createElement('div');
+    card.className = 'file-card';
+    card.dataset.fileId = file.id;
+    
+    // Déterminer l'icône en fonction du type de fichier
+    let iconClass = 'fa-file';
+    let iconType = 'default';
+    
+    if (file.mime_type) {
+        if (file.mime_type.includes('pdf')) {
+            iconClass = 'fa-file-pdf';
+            iconType = 'pdf';
+        } else if (file.mime_type.includes('word') || file.mime_type.includes('document')) {
+            iconClass = 'fa-file-word';
+            iconType = 'doc';
+        } else if (file.mime_type.includes('excel') || file.mime_type.includes('spreadsheet')) {
+            iconClass = 'fa-file-excel';
+            iconType = 'excel';
+        } else if (file.mime_type.includes('image')) {
+            iconClass = 'fa-file-image';
+            iconType = 'image';
+        } else if (file.mime_type.includes('text')) {
+            iconClass = 'fa-file-alt';
+            iconType = 'text';
+        }
+    }
+    
+    // Formater la taille du fichier
+    const fileSize = formatFileSize(file.file_size);
+    
+    // Formater la date
+    const uploadDate = new Date(file.uploaded_at).toLocaleDateString('fr-FR');
+    
+    card.innerHTML = `
+        <input type="checkbox" class="file-checkbox" onchange="updateSelectionState()">
+        <div class="file-icon ${iconType}">
+            <i class="fas ${iconClass}"></i>
+        </div>
+        <div class="file-info">
+            <div class="file-name" title="${file.original_name}">${file.original_name}</div>
+            <div class="file-meta">${fileSize} • ${uploadDate}</div>
+        </div>
+        <div class="file-actions">
+            <button class="file-action" onclick="downloadFile('${file.id}')" title="Télécharger">
+                <i class="fas fa-download"></i>
+            </button>
+            <button class="file-action delete" onclick="deleteFile('${file.id}')" title="Supprimer">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    
+    return card;
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function downloadFile(fileId) {
+    window.open(`/api/project/file/${fileId}/download`, '_blank');
+}
+
+function deleteFile(fileId) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce fichier?')) {
+        fetch(`/api/project/file/${fileId}/delete`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Fichier supprimé avec succès');
+                loadProjectFiles();
+            } else {
+                alert('Erreur: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la suppression');
+        });
+    }
+}
+
+// Fonctions pour la sélection multiple
+function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById('selectAllFiles');
+    const fileCheckboxes = document.querySelectorAll('.file-checkbox');
+    
+    fileCheckboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+        const card = checkbox.closest('.file-card');
+        if (card) {
+            if (checkbox.checked) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+        }
+    });
+    
+    updateSelectionState();
+}
+
+function updateSelectionState() {
+    const fileCheckboxes = document.querySelectorAll('.file-checkbox');
+    const selectedCheckboxes = document.querySelectorAll('.file-checkbox:checked');
+    const deleteBtn = document.getElementById('deleteSelectedBtn');
+    const selectAllCheckbox = document.getElementById('selectAllFiles');
+    
+    // Mettre à jour l'apparence des cartes
+    fileCheckboxes.forEach(checkbox => {
+        const card = checkbox.closest('.file-card');
+        if (card) {
+            if (checkbox.checked) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+        }
+    });
+    
+    // Afficher/masquer le bouton de suppression
+    if (deleteBtn) {
+        if (selectedCheckboxes.length > 0) {
+            deleteBtn.style.display = 'inline-flex';
+            deleteBtn.innerHTML = `<i class="fas fa-trash"></i> Supprimer la sélection (${selectedCheckboxes.length})`;
+        } else {
+            deleteBtn.style.display = 'none';
+        }
+    }
+    
+    // Mettre à jour "Sélectionner tout"
+    if (selectAllCheckbox) {
+        if (fileCheckboxes.length > 0 && selectedCheckboxes.length === fileCheckboxes.length) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else if (selectedCheckboxes.length > 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
+    }
+}
+
+function deleteSelectedFiles() {
+    const selectedCheckboxes = document.querySelectorAll('.file-checkbox:checked');
+    
+    if (selectedCheckboxes.length === 0) {
+        alert('Veuillez sélectionner au moins un fichier à supprimer');
+        return;
+    }
+    
+    const fileIds = Array.from(selectedCheckboxes).map(checkbox => {
+        const card = checkbox.closest('.file-card');
+        return card ? card.dataset.fileId : null;
+    }).filter(id => id !== null);
+    
+    if (confirm(`Êtes-vous sûr de vouloir supprimer ${fileIds.length} fichier(s)?`)) {
+        // Supprimer les fichiers un par un
+        const deletePromises = fileIds.map(fileId => 
+            fetch(`/api/project/file/${fileId}/delete`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+        );
+        
+        Promise.all(deletePromises)
+        .then(results => {
+            const successful = results.filter(r => r.success).length;
+            const failed = results.length - successful;
+            
+            if (successful > 0) {
+                alert(`${successful} fichier(s) supprimé(s) avec succès${failed > 0 ? `, ${failed} échec(s)` : ''}`);
+                loadProjectFiles();
+            } else {
+                alert('Erreur lors de la suppression des fichiers');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la suppression');
+        });
+    }
+}
+
+// Initialize progress charts and task checkbox view
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize task checkbox view
+    initializeTaskCheckboxView();
+    
+    // Main progress chart
+    drawProgressChart();
+    
+    // Task progress chart (donut chart)
+    drawTaskProgressChart();
+});
+
+// Separate function for drawing progress chart
+function drawProgressChart() {
+    const canvas = document.getElementById('progressChart');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    
+    // Get fresh task data
+    fetch(`/api/get_project_tasks/{{ project.id }}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                drawProgressChartWithData(ctx, canvas, data.tasks);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading task data for chart:', error);
+            // Fallback to static data
+            const taskData = {{ project_tasks | tojson }};
+            drawProgressChartWithData(ctx, canvas, taskData);
+        });
+}
+
+function drawProgressChartWithData(ctx, canvas, taskData) {
+    const completedTasks = taskData.filter(task => ['termine', 'fait', 'terminé'].indexOf(task.status) !== -1);
+    const totalTasks = taskData.length;
+    const currentProgress = totalTasks > 0 ? Math.round((completedTasks.length / totalTasks) * 100) : 0;
+    
+    // Clear canvas
+    const width = canvas.width;
+    const height = canvas.height;
+    ctx.clearRect(0, 0, width, height);
+    
+    // Create progression timeline based on actual completion dates
+    const progressTimeline = createProgressTimeline(taskData);
+    
+    // Simple grid lines with better margins
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 2]);
+    
+    // Add margins to prevent clipping - REDUCED for more space
+    const leftMargin = 25;
+    const rightMargin = 45;
+    const topMargin = 35;
+    const bottomMargin = 25;
+    
+    const chartWidth = width - leftMargin - rightMargin;
+    const chartHeight = height - topMargin - bottomMargin;
+    
+    for (let i = 0; i <= 4; i++) {
+        const y = topMargin + (chartHeight / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(leftMargin, y);
+        ctx.lineTo(width - rightMargin, y);
+        ctx.stroke();
+        
+        // Percentage labels
+        ctx.fillStyle = '#666666';
+        ctx.font = '11px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText((100 - (i * 25)) + '%', leftMargin - 5, y + 3);
+    }
+    
+    ctx.setLineDash([]);
+    
+    // Draw simple area under curve with adjusted coordinates
+    const maxValue = 100;
+    const stepX = chartWidth / (progressTimeline.length - 1);
+    
+    // Subtle area fill - REMOVED for cleaner look
+    // ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
+    // ctx.beginPath();
+    // 
+    // progressTimeline.forEach((point, index) => {
+    //     const x = leftMargin + index * stepX;
+    //     const y = topMargin + chartHeight - (point.progress / maxValue) * chartHeight;
+    //     
+    //     if (index === 0) {
+    //         ctx.moveTo(x, topMargin + chartHeight);
+    //         ctx.lineTo(x, y);
+    //     } else {
+    //         ctx.lineTo(x, y);
+    //     }
+    // });
+    // 
+    // ctx.lineTo(leftMargin + chartWidth, topMargin + chartHeight);
+    // ctx.closePath();
+    // ctx.fill();
+    
+    // Draw main progress line with adjusted coordinates
+    ctx.strokeStyle = '#2563eb';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    
+    progressTimeline.forEach((point, index) => {
+        const x = leftMargin + index * stepX;
+        const y = topMargin + chartHeight - (point.progress / maxValue) * chartHeight;
+        
+        if (index === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    });
+    
+    ctx.stroke();
+    
+    // Draw simple data points with adjusted coordinates
+    progressTimeline.forEach((point, index) => {
+        const x = leftMargin + index * stepX;
+        const y = topMargin + chartHeight - (point.progress / maxValue) * chartHeight;
+        
+        // Simple circle points
+        ctx.fillStyle = '#2563eb';
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // White center
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(x, y, 2, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Date labels for key points only with adjusted position
+        if (index === 0 || index === progressTimeline.length - 1 || point.progress > 0) {
+            ctx.fillStyle = '#666666';
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(point.dateLabel, x, topMargin + chartHeight + 20);
+        }
+    });
+    
+    // Draw title and stats with adjusted position
+    ctx.fillStyle = '#1f2937';
+    ctx.font = 'bold 13px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('Progression du projet', leftMargin, 20);
+    
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '10px Arial';
+    ctx.fillText(`${completedTasks.length}/${totalTasks} tâches terminées`, leftMargin, 35);
+    
+    // Simple progress indicator with adjusted position
+    const badgeX = width - rightMargin - 40;
+    const badgeY = 15;
+    
+    ctx.fillStyle = '#2563eb';
+    ctx.fillRect(badgeX, badgeY, 40, 20);
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(currentProgress + '%', badgeX + 20, badgeY + 13);
+}
+
+function createProgressTimeline(taskData) {
+    // Sort tasks by creation date
+    const sortedTasks = [...taskData].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    
+    if (sortedTasks.length === 0) {
+        return [{ date: new Date(), progress: 0, dateLabel: 'Aujourd\'hui', milestone: false }];
+    }
+    
+    const timeline = [];
+    const startDate = new Date(sortedTasks[0].created_at);
+    const today = new Date();
+    
+    // Add starting point
+    timeline.push({
+        date: startDate,
+        progress: 0,
+        dateLabel: formatChartDate(startDate),
+        milestone: true
+    });
+    
+    // Add points for each completed task with milestone detection
+    const completedTasks = sortedTasks.filter(task => ['termine', 'fait', 'terminé'].indexOf(task.status) !== -1);
+    const totalTasks = sortedTasks.length;
+    
+    // Trier les tâches complétées par date de complétion réelle
+    const sortedCompletedTasks = completedTasks.sort((a, b) => {
+        const dateA = a.completed_at ? new Date(a.completed_at) : (a.updated_at ? new Date(a.updated_at) : new Date(a.created_at));
+        const dateB = b.completed_at ? new Date(b.completed_at) : (b.updated_at ? new Date(b.updated_at) : new Date(b.created_at));
+        return dateA - dateB;
+    });
+    
+    // Ne garder que les tâches qui ont une date de complétion valide
+    const validCompletedTasks = sortedCompletedTasks.filter(task => {
+        return task.completed_at || task.updated_at || task.created_at;
+    });
+    
+    validCompletedTasks.forEach((task, index) => {
+        // Utiliser completed_at si disponible, sinon updated_at, sinon created_at
+        let completionDate;
+        if (task.completed_at) {
+            completionDate = new Date(task.completed_at);
+        } else if (task.updated_at) {
+            completionDate = new Date(task.updated_at);
+        } else {
+            completionDate = new Date(task.created_at);
+        }
+        
+        const progress = Math.round(((index + 1) / totalTasks) * 100);
+        
+        // Check if this is a milestone (25%, 50%, 75%, 100%)
+        const isMilestone = [25, 50, 75, 100].indexOf(progress) !== -1;
+        
+        timeline.push({
+            date: completionDate,
+            progress: progress,
+            dateLabel: formatChartDate(completionDate),
+            milestone: isMilestone,
+            taskName: task.name || 'Tâche complétée',
+            completedAt: task.completed_at || task.updated_at || task.created_at,
+            taskId: task.id
+        });
+    });
+    
+    // Add current point if needed
+    if (completedTasks.length < totalTasks) {
+        const currentProgress = Math.round((completedTasks.length / totalTasks) * 100);
+        timeline.push({
+            date: today,
+            progress: currentProgress,
+            dateLabel: 'Aujourd\'hui',
+            milestone: false
+        });
+    }
+    
+    // Smart sampling for better visualization
+    if (timeline.length > 8) {
+        const sampled = [timeline[0]]; // Always keep first point
+        
+        // Keep all milestones
+        const milestones = timeline.filter(point => point.milestone);
+        milestones.forEach(milestone => {
+            if (!sampled.indexOf(milestone) !== -1) {
+                sampled.push(milestone);
+            }
+        });
+        
+        // Add intermediate points if needed
+        const remainingPoints = timeline.filter(point => !point.milestone && sampled.indexOf(point) === -1);
+        const step = Math.max(1, Math.floor(remainingPoints.length / 3));
+        
+        for (let i = 0; i < remainingPoints.length; i += step) {
+            sampled.push(remainingPoints[i]);
+        }
+        
+        // Always keep last point
+        if (sampled.indexOf(timeline[timeline.length - 1]) === -1) {
+            sampled.push(timeline[timeline.length - 1]);
+        }
+        
+        // Sort by date
+        return sampled.sort((a, b) => new Date(a.date) - new Date(b.date));
+    }
+    
+    return timeline;
+}
+
+function formatChartDate(date) {
+    const d = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset to start of day
+    d.setHours(0, 0, 0, 0); // Reset to start of day
+    
+    const diffTime = today - d;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Aujourd\'hui';
+    if (diffDays === 1) return 'Hier';
+    if (diffDays === -1) return 'Demain';
+    if (diffDays > 1 && diffDays <= 7) return `Il y a ${diffDays}j`;
+    if (diffDays > 7 && diffDays <= 30) return `Il y a ${Math.floor(diffDays / 7)}s`;
+    if (diffDays > 30 && diffDays <= 365) return `Il y a ${Math.floor(diffDays / 30)}m`;
+    if (diffDays > 365) return `Il y a ${Math.floor(diffDays / 365)}a`;
+    
+    // For future dates
+    if (diffDays < -1 && diffDays >= -7) return `Dans ${Math.abs(diffDays)}j`;
+    if (diffDays < -7 && diffDays >= -30) return `Dans ${Math.abs(Math.floor(diffDays / 7))}s`;
+    if (diffDays < -30 && diffDays >= -365) return `Dans ${Math.abs(Math.floor(diffDays / 30))}m`;
+    
+    // Default format for dates far in past/future
+    return d.toLocaleDateString('fr-FR', { 
+        month: 'short', 
+        day: 'numeric',
+        year: d.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
+    });
+}
+
+// Separate function for drawing task progress chart
+function drawTaskProgressChart() {
+    const taskCanvas = document.getElementById('taskProgressChart');
+    if (!taskCanvas) return;
+    
+    const taskCtx = taskCanvas.getContext('2d');
+    
+    // Get fresh task data
+    fetch(`/api/get_project_tasks/{{ project.id }}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                drawTaskDonutChart(taskCtx, taskCanvas, data.tasks);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading task data for donut chart:', error);
+            // Fallback to static data
+            const taskData = {{ project_tasks | tojson }};
+            drawTaskDonutChart(taskCtx, taskCanvas, taskData);
+        });
+}
+
+function drawTaskDonutChart(taskCtx, taskCanvas, taskData) {
+    const completedTasks = taskData.filter(task => ['termine', 'fait', 'terminé'].indexOf(task.status) !== -1);
+    const totalTasks = taskData.length;
+    const inProgressTasks = taskData.filter(task => ['en-cours', 'progress'].indexOf(task.status) !== -1);
+    const todoTasks = taskData.filter(task => ['a-faire', 'todo', 'à faire'].indexOf(task.status) !== -1);
+    
+    // Calculate percentages
+    const completed = totalTasks > 0 ? (completedTasks.length / totalTasks) * 100 : 0;
+    const inProgress = totalTasks > 0 ? (inProgressTasks.length / totalTasks) * 100 : 0;
+    const todo = totalTasks > 0 ? (todoTasks.length / totalTasks) * 100 : 0;
+    
+    // Clear canvas
+    taskCtx.clearRect(0, 0, taskCanvas.width, taskCanvas.height);
+    
+    // Draw donut chart
+    const centerX = taskCanvas.width / 2;
+    const centerY = taskCanvas.height / 2;
+    const radius = 70;
+    const innerRadius = 45;
+    
+    // Draw segments
+    const segments = [
+        { value: completed, color: '#2563eb', label: 'Terminées' },
+        { value: inProgress, color: '#f59e0b', label: 'En cours' },
+        { value: todo, color: '#6b7280', label: 'À faire' }
+    ];
+    
+    let currentAngle = -Math.PI / 2;
+    
+    segments.forEach(segment => {
+        if (segment.value > 0) {
+            const angle = (segment.value / 100) * Math.PI * 2;
+            
+            // Draw outer arc
+            taskCtx.beginPath();
+            taskCtx.arc(centerX, centerY, radius, currentAngle, currentAngle + angle);
+            taskCtx.arc(centerX, centerY, innerRadius, currentAngle + angle, currentAngle, true);
+            taskCtx.closePath();
+            taskCtx.fillStyle = segment.color;
+            taskCtx.fill();
+            
+            currentAngle += angle;
+        }
+    });
+    
+    // Draw center text
+    taskCtx.fillStyle = '#2C3E50';
+    taskCtx.font = 'bold 24px Arial';
+    taskCtx.textAlign = 'center';
+    taskCtx.textBaseline = 'middle';
+    taskCtx.fillText(Math.round(completed) + '%', centerX, centerY);
+    
+    // Draw legend
+    let legendY = 20;
+    segments.forEach(segment => {
+        if (segment.value > 0) {
+            taskCtx.fillStyle = segment.color;
+            taskCtx.fillRect(10, legendY - 8, 12, 12);
+            
+            taskCtx.fillStyle = '#6B7280';
+            taskCtx.font = '11px Arial';
+            taskCtx.textAlign = 'left';
+            taskCtx.fillText(`${segment.label}: ${Math.round(segment.value)}%`, 28, legendY);
+            
+            legendY += 18;
+        }
+    });
+}
+
+// Initialize task checkbox view
+function initializeTaskCheckboxView() {
+    const tasksCheckboxList = document.getElementById('tasksCheckboxList');
+    const completedCountEl = document.getElementById('completedCount');
+    const totalCountEl = document.getElementById('totalCount');
+    
+    if (!tasksCheckboxList) return;
+    
+    // Get fresh task data from server
+    fetch(`/api/get_project_tasks/{{ project.id }}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                renderTaskList(data.tasks, tasksCheckboxList, completedCountEl, totalCountEl);
+                renderKanbanBoard(data.tasks);
+                
+                // Initialiser le drag & drop après le chargement des tâches
+                setTimeout(() => {
+                    try {
+                        if (typeof window.KanbanDragDrop !== 'undefined') {
+                            window.KanbanDragDrop.init();
+                        }
+                    } catch (error) {
+                        console.error('Error initializing drag & drop after load:', error);
+                    }
+                }, 100);
+            } else {
+                console.error('API error:', data);
+                showFlashMessage(data.error || 'Erreur lors du chargement des tâches', 'error');
+                // Fallback to static data
+                const taskData = {{ project_tasks | tojson }};
+                renderTaskList(taskData, tasksCheckboxList, completedCountEl, totalCountEl);
+                renderKanbanBoard(taskData);
+                
+                // Initialiser le drag & drop même avec les données statiques
+                setTimeout(() => {
+                    try {
+                        if (typeof window.KanbanDragDrop !== 'undefined') {
+                            window.KanbanDragDrop.init();
+                        }
+                    } catch (error) {
+                        console.error('Error initializing drag & drop with static data:', error);
+                    }
+                }, 100);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading task data:', error);
+            showFlashMessage('Erreur lors du chargement des données: ' + error.message, 'error');
+            // Fallback to static data
+            const taskData = {{ project_tasks | tojson }};
+            renderTaskList(taskData, tasksCheckboxList, completedCountEl, totalCountEl);
+            renderKanbanBoard(taskData);
+            
+            // Initialiser le drag & drop même en cas d'erreur
+            setTimeout(() => {
+                try {
+                    if (typeof window.KanbanDragDrop !== 'undefined') {
+                        window.KanbanDragDrop.init();
+                    }
+                } catch (error) {
+                    console.error('Error initializing drag & drop in catch:', error);
+                }
+            }, 100);
+        });
+}
+
+// Render Kanban board with user tasks
+function renderKanbanBoard(taskData) {
+    const todoList = document.getElementById('kanbanTodoList');
+    const progressList = document.getElementById('kanbanProgressList');
+    const reviewList = document.getElementById('kanbanReviewList');
+    
+    if (!todoList || !progressList || !reviewList) return;
+    
+    // Clear existing content
+    todoList.innerHTML = '<!-- Les tâches créées par l\'utilisateur s\'afficheront ici -->';
+    progressList.innerHTML = '<!-- Les tâches en cours s\'afficheront ici -->';
+    reviewList.innerHTML = '<!-- Les tâches réalisées s\'afficheront ici -->';
+    
+    let todoCount = 0, progressCount = 0, reviewCount = 0;
+    
+    taskData.forEach(task => {
+        const taskCard = createKanbanTaskCard(task);
+        
+        // Determine column based on status
+        if (['a-faire', 'todo', 'à faire'].indexOf(task.status) !== -1) {
+            todoList.appendChild(taskCard);
+            todoCount++;
+        } else if (['en-cours', 'progress'].indexOf(task.status) !== -1) {
+            progressList.appendChild(taskCard);
+            progressCount++;
+        } else if (['relecture', 'review', 'terminé', 'termine', 'fait', 'réalisée'].indexOf(task.status) !== -1) {
+            reviewList.appendChild(taskCard);
+            reviewCount++;
+        }
+    });
+    
+    // Update column counters
+    const todoCountEl = document.querySelector('.todo-column .task-count');
+    const progressCountEl = document.querySelector('.progress-column .task-count');
+    const reviewCountEl = document.querySelector('.review-column .task-count');
+    
+    if (todoCountEl) todoCountEl.textContent = todoCount;
+    if (progressCountEl) progressCountEl.textContent = progressCount;
+    if (reviewCountEl) reviewCountEl.textContent = reviewCount;
+}
+
+// Create Kanban task card - VERSION AVEC DRAG & DROP NATIF
+function createKanbanTaskCard(task) {
+    const card = document.createElement('div');
+    card.className = 'task-card';
+    card.setAttribute('data-task-id', task.id);
+    
+    // Rendre la carte dragable avec HTML5 natif
+    card.draggable = true;
+    card.style.cursor = 'grab';
+    
+    const priorityClass = task.priority?.toLowerCase() || 'medium';
+    const priorityText = task.priority || 'Moyenne';
+    const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString('fr-FR', { 
+        month: 'short', 
+        day: 'numeric' 
+    }) : '';
+    const assignee = task.assignee || '';
+    
+    card.innerHTML = `
+        <div class="task-priority ${priorityClass}">${priorityText}</div>
+        <h5 class="task-title">${task.name || 'Tâche sans nom'}</h5>
+        ${task.description ? `<p class="task-description">${task.description}</p>` : ''}
+        <div class="task-meta">
+            ${assignee ? `<div class="task-assignee">${assignee}</div>` : ''}
+            ${dueDate ? `<div class="task-due">${dueDate}</div>` : ''}
+        </div>
+        <button class="task-edit-btn" onclick="editTask('${task.id}')" title="Modifier la tâche">✏️</button>
+    `;
+    
+    // Style du bouton d'édition
+    const editBtn = card.querySelector('.task-edit-btn');
+    editBtn.style.cssText = `
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 4px 6px;
+        cursor: pointer;
+        font-size: 12px;
+        z-index: 10;
+    `;
+    
+    return card;
+}
+
+function renderTaskList(taskData, tasksCheckboxList, completedCountEl, totalCountEl) {
+    // Sort tasks: incomplete first, then by priority
+    const sortedTasks = [...taskData].sort((a, b) => {
+        const aCompleted = ['termine', 'fait', 'terminé', 'réalisée'].indexOf(a.status) !== -1;
+        const bCompleted = ['termine', 'fait', 'terminé', 'réalisée'].indexOf(b.status) !== -1;
+        
+        if (aCompleted !== bCompleted) {
+            return aCompleted ? 1 : -1;
+        }
+        
+        // Sort by priority
+        const priorityOrder = { 'haute': 0, 'high': 0, 'moyenne': 1, 'medium': 1, 'basse': 2, 'low': 2 };
+        const aPriority = priorityOrder[a.priority] || 3;
+        const bPriority = priorityOrder[b.priority] || 3;
+        
+        return aPriority - bPriority;
+    });
+    
+    let completedCount = 0;
+    let html = '';
+    
+    sortedTasks.forEach(task => {
+        const isCompleted = ['termine', 'fait', 'terminé', 'réalisée'].indexOf(task.status) !== -1;
+        const isInProgress = ['en-cours', 'progress'].indexOf(task.status) !== -1;
+        if (isCompleted) completedCount++;
+        
+        const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString('fr-FR', { 
+            month: 'short', 
+            day: 'numeric' 
+        }) : '';
+        
+        const priorityClass = task.priority?.toLowerCase() || 'medium';
+        
+        // Add status class for styling
+        let statusClass = '';
+        if (isCompleted) statusClass = 'completed';
+        else if (isInProgress) statusClass = 'in-progress';
+        
+        html += `
+            <div class="task-checkbox-item ${statusClass}" data-task-id="${task.id}">
+                <div class="task-checkbox ${isCompleted ? 'checked' : ''}" id="checkbox-${task.id}" onclick="toggleTask('${task.id}')"></div>
+                <div class="task-checkbox-content" onclick="editTask('${task.id}')">
+                    <div class="task-checkbox-label">${task.name || 'Tâche sans nom'}</div>
+                    <div class="task-checkbox-meta">
+                        <span class="task-priority-badge ${priorityClass}">${task.priority || 'Moyenne'}</span>
+                        <span class="task-due-date">${dueDate}</span>
+                    </div>
+                    ${task.description ? `<div class="task-description-preview">${task.description.substring(0, 100)}${task.description.length > 100 ? '...' : ''}</div>` : ''}
+                </div>
+                <div class="task-actions">
+                    <button class="task-action-btn edit" onclick="event.stopPropagation(); editTask('${task.id}')" title="Modifier">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="task-action-btn delete" onclick="event.stopPropagation(); confirmDeleteTask('${task.id}')" title="Supprimer">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    tasksCheckboxList.innerHTML = html || '<p style="text-align: center; color: #6B7280; padding: 2rem;">Aucune tâche pour ce projet</p>';
+    
+    // Update counters
+    if (completedCountEl) completedCountEl.textContent = completedCount;
+    if (totalCountEl) totalCountEl.textContent = taskData.length;
+    
+    // Update project progress in header
+    const progressPercentage = taskData.length > 0 ? Math.round((completedCount / taskData.length) * 100) : 0;
+    const progressElements = document.querySelectorAll('.progress-value');
+    progressElements.forEach(el => {
+        el.textContent = progressPercentage + '%';
+    });
+    
+    // Update progress bar
+    const progressFill = document.querySelector('.progress-fill');
+    if (progressFill) {
+        progressFill.style.width = progressPercentage + '%';
+    }
+    
+    // Update stats in right column
+    const totalTasksEl = document.getElementById('totalTasks');
+    const completedTasksEl = document.getElementById('completedTasks');
+    const progressEl = document.getElementById('progressPercentage');
+    
+    if (totalTasksEl) totalTasksEl.textContent = taskData.length;
+    if (completedTasksEl) completedTasksEl.textContent = completedCount;
+    if (progressEl) progressEl.textContent = progressPercentage + '%';
+}
+
+// Toggle task completion (simple checkbox: à faire ↔ terminé)
+function toggleTask(taskId) {
+    // Get fresh task data from server
+    fetch(`/api/get_project_tasks/{{ project.id }}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                const task = data.tasks.find(t => t.id === taskId);
+                
+                if (!task) {
+                    console.error('Task not found:', taskId);
+                    return;
+                }
+                
+                console.log('Current task status:', task.status);
+                
+                const isCompleted = ['termine', 'fait', 'terminé', 'réalisée'].indexOf(task.status) !== -1;
+                const newStatus = isCompleted ? 'a-faire' : 'termine';
+                
+                console.log('New status will be:', newStatus);
+                
+                // Update UI immediately for better UX
+                const checkbox = document.getElementById(`checkbox-${taskId}`);
+                const taskItem = checkbox.closest('.task-checkbox-item');
+                
+                if (newStatus === 'termine') {
+                    checkbox.classList.add('checked');
+                    taskItem.classList.add('completed');
+                    taskItem.classList.remove('in-progress');
+                } else {
+                    checkbox.classList.remove('checked');
+                    taskItem.classList.remove('completed');
+                    taskItem.classList.remove('in-progress');
+                }
+                
+                // Update counters
+                const completedCountEl = document.getElementById('completedCount');
+                const totalCountEl = document.getElementById('totalCount');
+                let completedCount = parseInt(completedCountEl.textContent);
+                
+                if (newStatus === 'termine') {
+                    completedCount++;
+                } else {
+                    completedCount--;
+                }
+                
+                completedCountEl.textContent = completedCount;
+                
+                // Send update to server
+                fetch(`/api/update_task/${taskId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Server response:', data);
+                    
+                    if (data.success) {
+                        // Update progress display
+                        const progressElements = document.querySelectorAll('.progress-value, #progressPercentage');
+                        progressElements.forEach(el => {
+                            el.textContent = data.progress + '%';
+                        });
+                        
+                        // Update progress bar
+                        const progressFill = document.querySelector('.progress-fill');
+                        if (progressFill) {
+                            progressFill.style.width = data.progress + '%';
+                        }
+                        
+                        // Update project progress in main projects page
+                        updateProjectProgressInMainPage('{{ project.id }}', data.progress);
+                        
+                        showFlashMessage(`Tâche ${newStatus === 'termine' ? 'terminée' : 'réouverte'} avec succès`, 'success');
+                        
+                        // Refresh charts and Kanban board
+                        setTimeout(() => {
+                            try {
+                                initializeTaskCheckboxView();
+                            } catch (error) {
+                                console.error('Error refreshing task view:', error);
+                            }
+                            
+                            try {
+                                drawProgressChart();
+                            } catch (error) {
+                                console.error('Error drawing progress chart:', error);
+                            }
+                            
+                            try {
+                                drawTaskProgressChart();
+                            } catch (error) {
+                                console.error('Error drawing task chart:', error);
+                            }
+                        }, 300);
+                    } else {
+                        console.error('Server error:', data);
+                        showFlashMessage(data.error || 'Erreur lors de la mise à jour du statut', 'error');
+                        
+                        // Revert UI change on error
+                        if (isCompleted) {
+                            checkbox.classList.add('checked');
+                            taskItem.classList.add('completed');
+                        } else {
+                            checkbox.classList.remove('checked');
+                            taskItem.classList.remove('completed');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating task status:', error);
+                    showFlashMessage('Erreur lors de la mise à jour du statut: ' + error.message, 'error');
+                    
+                    // Revert UI change on error
+                    if (isCompleted) {
+                        checkbox.classList.add('checked');
+                        taskItem.classList.add('completed');
+                    } else {
+                        checkbox.classList.remove('checked');
+                        taskItem.classList.remove('completed');
+                    }
+                });
+            } else {
+                console.error('API error:', data);
+                showFlashMessage(data.error || 'Erreur lors du chargement des tâches', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading task data:', error);
+            showFlashMessage('Erreur lors du chargement des données: ' + error.message, 'error');
+        });
+}
+
+// Show status selection menu
+function showStatusMenu(taskId, currentStatus) {
+    // Remove existing menu if any
+    const existingMenu = document.getElementById('statusMenu');
+    if (existingMenu) {
+        existingMenu.remove();
+    }
+    
+    // Get fresh task data from server
+    fetch(`/api/get_project_tasks/{{ project.id }}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const task = data.tasks.find(t => t.id === taskId);
+                if (task) {
+                    createStatusMenu(taskId, task.status);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading task data for menu:', error);
+            // Fallback to provided status
+            createStatusMenu(taskId, currentStatus);
+        });
+}
+
+// Create status menu DOM
+function createStatusMenu(taskId, currentStatus) {
+    // Create menu element
+    const menu = document.createElement('div');
+    menu.id = 'statusMenu';
+    menu.className = 'status-menu';
+    
+    // Define status options
+    const statusOptions = [
+        { value: 'a-faire', label: 'À faire', icon: '📝', color: '#6b7280' },
+        { value: 'en-cours', label: 'En cours', icon: '⚡', color: '#f59e0b' },
+        { value: 'termine', label: 'Terminé', icon: '✅', color: '#10b981' }
+    ];
+    
+    // Create menu HTML
+    let menuHTML = '<div class="status-menu-header">Changer le statut</div>';
+    menuHTML += '<div class="status-menu-options">';
+    
+    statusOptions.forEach(option => {
+        const isSelected = option.value === currentStatus;
+        menuHTML += `
+            <div class="status-option ${isSelected ? 'selected' : ''}" 
+                 onclick="changeTaskStatus('${taskId}', '${option.value}', '${currentStatus}')"
+                 data-status="${option.value}">
+                <span class="status-icon">${option.icon}</span>
+                <span class="status-label">${option.label}</span>
+                ${isSelected ? '<span class="status-check">✓</span>' : ''}
+            </div>
+        `;
+    });
+    
+    menuHTML += '</div>';
+    menu.innerHTML = menuHTML;
+    
+    // Position menu near the checkbox
+    const checkbox = document.getElementById(`checkbox-${taskId}`);
+    const rect = checkbox.getBoundingClientRect();
+    
+    menu.style.position = 'fixed';
+    menu.style.left = rect.right + 10 + 'px';
+    menu.style.top = rect.top + 'px';
+    menu.style.zIndex = '1000';
+    
+    // Add to body
+    document.body.appendChild(menu);
+    
+    // Close menu when clicking outside
+    setTimeout(() => {
+        document.addEventListener('click', closeStatusMenu);
+    }, 100);
+}
+
+// Close status menu
+function closeStatusMenu(event) {
+    const menu = document.getElementById('statusMenu');
+    if (menu && (!event || !menu.contains(event.target))) {
+        menu.remove();
+        document.removeEventListener('click', closeStatusMenu);
+    }
+}
+
+// Change task status
+function changeTaskStatus(taskId, newStatus, oldStatus) {
+    // Close menu immediately
+    closeStatusMenu();
+    
+    // Update UI immediately
+    const checkbox = document.getElementById(`checkbox-${taskId}`);
+    const taskItem = checkbox.closest('.task-checkbox-item');
+    
+    const wasCompleted = ['termine', 'fait', 'terminé'].indexOf(oldStatus) !== -1;
+    const isCompleted = ['termine', 'fait', 'terminé'].indexOf(newStatus) !== -1;
+    
+    if (isCompleted) {
+        checkbox.classList.add('checked');
+        taskItem.classList.add('completed');
+    } else {
+        checkbox.classList.remove('checked');
+        taskItem.classList.remove('completed');
+    }
+    
+    // Update counters
+    const completedCountEl = document.getElementById('completedCount');
+    const totalCountEl = document.getElementById('totalCount');
+    let completedCount = 0;
+    
+    if (completedCountEl) {
+        completedCount = parseInt(completedCountEl.textContent) || 0;
+    }
+    
+    if (!wasCompleted && isCompleted) {
+        completedCount++;
+    } else if (wasCompleted && !isCompleted) {
+        completedCount--;
+    }
+    
+    if (completedCountEl) completedCountEl.textContent = completedCount;
+    
+    // Send update to server
+    fetch(`/api/update_task/${taskId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.progress !== undefined) {
+            // Update progress display
+            const progressElements = document.querySelectorAll('.progress-value, #progressPercentage');
+            progressElements.forEach(el => {
+                el.textContent = data.progress + '%';
+            });
+            
+            // Update progress bar
+            const progressFill = document.querySelector('.progress-fill');
+            if (progressFill) {
+                progressFill.style.width = data.progress + '%';
+            }
+            
+            // Refresh charts and Kanban board
+            setTimeout(() => {
+                initializeTaskCheckboxView();
+                drawProgressChart();
+                drawTaskProgressChart();
+            }, 300);
+        }
+    })
+    .catch(error => {
+        console.error('Error updating task status:', error);
+        showFlashMessage('Erreur lors de la mise à jour du statut', 'error');
+    });
+}
+</script>
+
+<!-- Task Modal -->
+<div id="taskModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="taskModalTitle">Nouvelle tâche</h2>
+            <button class="modal-close" onclick="closeTaskModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="taskForm" onsubmit="saveTask(event)">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="taskName">Nom de la tâche *</label>
+                    <input type="text" class="form-input" id="taskName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="taskDescription">Description</label>
+                    <textarea class="form-textarea" id="taskDescription" placeholder="Description détaillée de la tâche..."></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="taskPriority">Priorité</label>
+                        <select class="form-select" id="taskPriority">
+                            <option value="basse">Basse</option>
+                            <option value="moyenne" selected>Moyenne</option>
+                            <option value="haute">Haute</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="taskStatus">Statut</label>
+                        <select class="form-select" id="taskStatus">
+                            <option value="a-faire">À faire</option>
+                            <option value="en-cours">En cours</option>
+                            <option value="termine">Terminée</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="taskDueDate">Date limite</label>
+                        <input type="date" class="form-input" id="taskDueDate">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="taskAssignee">Assigné à</label>
+                        <input type="text" class="form-input" id="taskAssignee" placeholder="Nom de la personne">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="taskTags">Étiquettes (séparées par des virgules)</label>
+                    <input type="text" class="form-input" id="taskTags" placeholder="ex: urgent, frontend, API">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeTaskModal()">Annuler</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Enregistrer
+                </button>
+                <button type="button" class="btn btn-danger" id="deleteTaskBtn" onclick="deleteTask()" style="display: none;">
+                    <i class="fas fa-trash"></i> Supprimer
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+</div>
+<!-- Fermeture dashboard-content -->
+
+<script>
+// Kanban task management
+let selectedTask = null;
+let selectedTaskElement = null;
+let isDragging = false;
+let dragClone = null;
+let dragStartX = 0;
+let dragStartY = 0;
+let originalColumn = null;
+let originalPosition = null;
+
+// Initialize Kanban drag and drop
+function initializeKanbanDragDrop() {
+    const taskCards = document.querySelectorAll('.task-card');
+    
+    taskCards.forEach(card => {
+        card.addEventListener('mousedown', handleTaskMouseDown);
+        card.addEventListener('touchstart', handleTaskTouchStart, { passive: false });
+        card.style.cursor = 'grab';
+    });
+    
+    // Global mouse events
+    document.addEventListener('mousemove', handleGlobalMouseMove);
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+    document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
+    document.addEventListener('touchend', handleGlobalTouchEnd);
+    
+    // Configurer les colonnes ET les zones de drop
+    const columns = document.querySelectorAll('.kanban-column');
+    columns.forEach(column => {
+        column.addEventListener('mouseenter', handleColumnMouseEnter);
+        column.addEventListener('mouseleave', handleColumnMouseLeave);
+    });
+    
+    // Configurer les zones de drop spécifiques
+    const dropZones = document.querySelectorAll('.drop-zone');
+    dropZones.forEach(zone => {
+        zone.addEventListener('mouseenter', handleDropZoneMouseEnter);
+        zone.addEventListener('mouseleave', handleDropZoneMouseLeave);
+    });
+    
+    console.log('✅ Zones de drop configurées:', dropZones.length);
+}
+
+// Handle mouse down on task
+function handleTaskMouseDown(event) {
+    if (event.button === 0) { // Left click only
+        event.preventDefault();
+        event.stopPropagation();
+        
+        selectedTaskElement = event.currentTarget;
+        selectedTask = selectedTaskElement.dataset.taskId;
+        
+        // Start dragging
+        isDragging = true;
+        selectedTaskElement.classList.add('dragging');
+        
+        // Ajouter la classe au body pour les styles globaux
+        document.body.classList.add('dragging-active');
+        
+        // Désactiver complètement le comportement par défaut du navigateur
+        document.body.style.userSelect = 'none';
+        document.body.style.webkitUserSelect = 'none';
+        document.body.style.mozUserSelect = 'none';
+        document.body.style.msUserSelect = 'none';
+        
+        // Clone the task for dragging
+        const dragClone = selectedTaskElement.cloneNode(true);
+        dragClone.style.position = 'fixed';
+        dragClone.style.pointerEvents = 'none';
+        dragClone.style.zIndex = '1000';
+        dragClone.style.opacity = '0.8';
+        dragClone.style.transform = 'rotate(5deg)';
+        dragClone.style.cursor = 'grabbing';
+        
+        document.body.appendChild(dragClone);
+        
+        // Store reference to clone
+        selectedTaskElement.dragClone = dragClone;
+        
+        // Stocker la position de départ
+        dragStartX = event.clientX;
+        dragStartY = event.clientY;
+        
+        console.log('🎯 Drag commencé - icône d\'interdiction désactivée');
+    }
+}
+
+// Handle mouse enter on task
+function handleTaskMouseEnter(event) {
+    if (isDragging && selectedTaskElement && event.currentTarget !== selectedTaskElement) {
+        // Swap tasks if dragging over another task
+        const targetTask = event.currentTarget;
+        const targetColumn = targetTask.closest('.kanban-column');
+        const sourceColumn = selectedTaskElement.closest('.kanban-column');
+        
+        if (targetColumn && sourceColumn && targetColumn !== sourceColumn) {
+            // Swap the tasks
+            const targetList = targetColumn.querySelector('.task-list');
+            const sourceList = sourceColumn.querySelector('.task-list');
+            
+            const targetNextSibling = targetTask.nextElementSibling;
+            const sourceNextSibling = selectedTaskElement.nextElementSibling;
+            
+            if (targetNextSibling) {
+                targetList.insertBefore(selectedTaskElement, targetNextSibling);
+            } else {
+                targetList.appendChild(selectedTaskElement);
+            }
+            
+            if (sourceNextSibling) {
+                sourceList.insertBefore(targetTask, sourceNextSibling);
+            } else {
+                sourceList.appendChild(targetTask);
+            }
+            
+            // Update status for both tasks
+            updateTaskStatus(selectedTask, getColumnStatus(targetColumn));
+            updateTaskStatus(targetTask.dataset.taskId, getColumnStatus(sourceColumn));
+            
+            // Update counters
+            updateColumnCounters();
+        }
+    }
+}
+
+// Handle mouse up on task
+function handleTaskMouseUp(event) {
+    if (isDragging && selectedTaskElement) {
+        isDragging = false;
+        
+        // Remove dragging class
+        selectedTaskElement.classList.remove('dragging');
+        
+        // Retirer la classe du body
+        document.body.classList.remove('dragging-active');
+        
+        // Remove clone
+        if (selectedTaskElement.dragClone) {
+            selectedTaskElement.dragClone.remove();
+            selectedTaskElement.dragClone = null;
+        }
+        
+        // Restaurer les styles du corps
+        document.body.style.userSelect = '';
+        document.body.style.webkitUserSelect = '';
+        document.body.style.mozUserSelect = '';
+        document.body.style.msUserSelect = '';
+        document.body.style.cursor = '';
+        
+        // Check if we're over a column
+        const column = getColumnFromPosition(event.clientX, event.clientY);
+        if (column) {
+            const taskList = column.querySelector('.task-list');
+            taskList.appendChild(selectedTaskElement);
+            
+            // Update status
+            const newStatus = getColumnStatus(column);
+            updateTaskStatus(selectedTask, newStatus);
+            
+            // Update counters
+            updateColumnCounters();
+            
+            console.log('✅ Tâche déposée avec succès dans:', column.id);
+        }
+        
+        selectedTask = null;
+        selectedTaskElement = null;
+    }
+}
+
+// Handle global mouse move
+function handleGlobalMouseMove(event) {
+    if (isDragging && selectedTaskElement && selectedTaskElement.dragClone) {
+        // Empêcher le comportement par défaut qui cause l'icône d'interdiction
+        event.preventDefault();
+        
+        // Update clone position
+        selectedTaskElement.dragClone.style.left = (event.clientX - 50) + 'px';
+        selectedTaskElement.dragClone.style.top = (event.clientY - 25) + 'px';
+        
+        // S'assurer que le curseur reste en "grabbing"
+        document.body.style.cursor = 'grabbing';
+        
+        // Highlight column if over one
+        const column = getColumnFromPosition(event.clientX, event.clientY);
+        document.querySelectorAll('.kanban-column').forEach(col => {
+            col.classList.remove('drag-over');
+        });
+        
+        if (column) {
+            column.classList.add('drag-over');
+        }
+    }
+}
+
+// Handle global mouse up
+function handleGlobalMouseUp(event) {
+    if (isDragging) {
+        // Empêcher le comportement par défaut
+        event.preventDefault();
+        
+        handleTaskMouseUp(event);
+    }
+}
+
+// Handle column mouse enter
+function handleColumnMouseEnter(event) {
+    if (isDragging) {
+        event.currentTarget.classList.add('drag-over');
+    }
+}
+
+// Handle column mouse leave
+function handleColumnMouseLeave(event) {
+    if (isDragging) {
+        event.currentTarget.classList.remove('drag-over');
+    }
+}
+
+// Handle drop zone mouse enter
+function handleDropZoneMouseEnter(event) {
+    if (isDragging) {
+        const dropZone = event.currentTarget;
+        const taskList = dropZone.closest('.task-list');
+        
+        // Ajouter les classes visuelles
+        dropZone.classList.add('drag-over');
+        if (taskList) {
+            taskList.classList.add('drag-over');
+        }
+        
+        console.log('🎯 Zone de drop active:', dropZone.dataset.column);
+    }
+}
+
+// Handle drop zone mouse leave
+function handleDropZoneMouseLeave(event) {
+    if (isDragging) {
+        const dropZone = event.currentTarget;
+        const taskList = dropZone.closest('.task-list');
+        
+        // Retirer les classes visuelles
+        dropZone.classList.remove('drag-over');
+        if (taskList) {
+            taskList.classList.remove('drag-over');
+        }
+    }
+}
+
+// Get column from position
+function getColumnFromPosition(x, y) {
+    // D'abord vérifier les zones de drop
+    const dropZones = document.querySelectorAll('.drop-zone');
+    for (let zone of dropZones) {
+        const rect = zone.getBoundingClientRect();
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+            // Retourner la colonne parente de la zone de drop
+            return zone.closest('.kanban-column');
+        }
+    }
+    
+    // Ensuite vérifier les colonnes
+    const columns = document.querySelectorAll('.kanban-column');
+    for (let column of columns) {
+        const rect = column.getBoundingClientRect();
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+            return column;
+        }
+    }
+    return null;
+}
+
+// Get status based on column
+function getColumnStatus(column) {
+    const columnId = column.querySelector('.task-list').id;
+    
+    if (columnId === 'kanbanTodoList') {
+        return 'a-faire';
+    } else if (columnId === 'kanbanProgressList') {
+        return 'en-cours';
+    } else if (columnId === 'kanbanReviewList') {
+        return 'terminé';
+    }
+    return 'a-faire';
+}
+
+// Move task to column visually
+function moveTaskToColumn(taskCard, targetColumn) {
+    const taskList = targetColumn.querySelector('.task-list');
+    taskList.appendChild(taskCard);
+    
+    // Update counters
+    updateColumnCounters();
+}
+
+// Update column counters
+function updateColumnCounters() {
+    const columns = document.querySelectorAll('.kanban-column');
+    columns.forEach(column => {
+        const taskCount = column.querySelectorAll('.task-card').length;
+        const counter = column.querySelector('.task-count');
+        if (counter) {
+            counter.textContent = taskCount;
+        }
+    });
+}
+
+// Update task status on server
+function updateTaskStatus(taskId, newStatus) {
+    fetch(`/api/update_task/${taskId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update progress display
+            const progressElements = document.querySelectorAll('.progress-value, #progressPercentage');
+            progressElements.forEach(el => {
+                el.textContent = data.progress + '%';
+            });
+            
+            // Update progress bar
+            const progressFill = document.querySelector('.progress-fill');
+            if (progressFill) {
+                progressFill.style.width = data.progress + '%';
+            }
+            
+            // Refresh other views
+            setTimeout(() => {
+                initializeTaskCheckboxView();
+                drawProgressChart();
+                drawTaskProgressChart();
+            }, 300);
+        }
+    })
+    .catch(error => {
+        console.error('Error updating task status:', error);
+        showFlashMessage('Erreur lors de la mise à jour du statut', 'error');
+    });
+}
+
+<!-- Styles CSS pour le drag & drop natif -->
+<style>
+.task-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid #E5E7EB;
+    cursor: grab;
+    transition: all 0.2s ease;
+    position: relative;
+    user-select: none;
+}
+
+.task-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.task-card:active,
+.task-card.dragging {
+    cursor: grabbing !important;
+}
+
+/* Styles globaux pendant le drag */
+body.dragging-active {
+    cursor: grabbing !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+}
+
+/* Empêcher l'icône d'interdiction sur tous les éléments pendant le drag */
+body.dragging-active * {
+    cursor: grabbing !important;
+}
+
+.task-card[draggable="true"] {
+    cursor: grab;
+}
+
+.task-card[draggable="true"]:active {
+    cursor: grabbing;
+}
+
+.task-priority {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: inline-block;
+}
+
+.drag-placeholder {
+    background: #f3f4f6;
+    border: 2px dashed #3b82f6;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 10px 0;
+    text-align: center;
+    color: #3b82f6;
+    font-weight: bold;
+    animation: pulse 1.5s infinite;
+}
+
+/* Styles pour les zones de drop */
+.drop-zone {
+    min-height: 80px;
+    margin: 0.5rem 0;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.drop-placeholder {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(147, 197, 253, 0.1) 100%);
+    border: 2px dashed #93c5fd;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    color: #6b7280;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60px;
+}
+
+.drop-zone.drag-over .drop-placeholder {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 197, 253, 0.2) 100%);
+    border-color: #3b82f6;
+    color: #3b82f6;
+    font-weight: 600;
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+/* Cacher les placeholders quand il y a des tâches */
+.task-list:has(.task-card:not(.dragging)) .drop-zone {
+    display: none;
+}
+
+/* Afficher les placeholders pendant le drag */
+.task-list.drag-over .drop-zone {
+    display: block !important;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}
+</style>
+
+<!-- Modales pour la gestion des membres et rôles -->
+<!-- Modal de gestion des rôles -->
+<div id="manageRolesModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h2 class="modal-title">Gestion des rôles</h2>
+            <button onclick="closeManageRolesModal()" class="modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Rôles personnalisables</h3>
+                <button onclick="openCreateRoleModal()" class="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+                    <i class="fas fa-plus mr-1"></i>Nouveau rôle
+                </button>
+            </div>
+            
+            <div id="rolesList" class="space-y-3">
+                <!-- Les rôles seront chargés dynamiquement -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de création/édition de rôle -->
+<div id="roleModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="roleModalTitle">Créer un rôle</h2>
+            <button onclick="closeRoleModal()" class="modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="roleForm" class="modal-body">
+            <input type="hidden" id="roleId">
+            
+            <div class="form-group">
+                <label for="roleName" class="form-label">Nom du rôle *</label>
+                <input type="text" id="roleName" name="name" required class="form-input" placeholder="Ex: Développeur, Chef de projet">
+            </div>
+            
+            <div class="form-group">
+                <label for="roleDescription" class="form-label">Description</label>
+                <textarea id="roleDescription" name="description" rows="3" class="form-input" placeholder="Décrivez les responsabilités de ce rôle..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="roleColor" class="form-label">Couleur</label>
+                <div class="flex items-center gap-3">
+                    <input type="color" id="roleColor" name="color" class="h-10 w-20 border border-gray-300 rounded">
+                    <input type="text" id="roleColorText" class="form-input flex-1" placeholder="#6B7280">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Permissions</label>
+                <div class="space-y-2">
+                    <label class="flex items-center">
+                        <input type="checkbox" name="permissions" value="view_project" class="mr-2">
+                        <span>Voir le projet</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="permissions" value="edit_project" class="mr-2">
+                        <span>Modifier le projet</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="permissions" value="manage_tasks" class="mr-2">
+                        <span>Gérer les tâches</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="permissions" value="manage_members" class="mr-2">
+                        <span>Gérer les membres</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="permissions" value="delete_project" class="mr-2">
+                        <span>Supprimer le projet</span>
+                    </label>
+                </div>
+            </div>
+        </form>
+        
+        <div class="modal-footer">
+            <button type="button" onclick="closeRoleModal()" class="btn btn-secondary">
+                Annuler
+            </button>
+            <button type="submit" form="roleForm" class="btn btn-primary">
+                <i class="fas fa-save mr-2"></i>Enregistrer
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal d'ajout de membre -->
+<div id="addMemberModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Ajouter un membre au projet</h2>
+            <button onclick="closeAddMemberModal()" class="modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="addMemberForm" class="modal-body">
+            <div class="form-group">
+                <label for="memberName" class="form-label">Nom du membre *</label>
+                <input type="text" id="memberName" name="name" required class="form-input" placeholder="Entrez le nom du membre">
+            </div>
+            
+            <div class="form-group">
+                <label for="memberEmail" class="form-label">Email</label>
+                <input type="email" id="memberEmail" name="email" class="form-input" placeholder="email@example.com">
+            </div>
+            
+            <div class="form-group">
+                <label for="memberRole" class="form-label">Rôle</label>
+                <select id="memberRole" name="role_id" class="form-select">
+                    <option value="">Aucun rôle</option>
+                    <!-- Les rôles seront chargés dynamiquement -->
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="memberPhone" class="form-label">Téléphone</label>
+                <input type="tel" id="memberPhone" name="phone" class="form-input" placeholder="06 12 34 56 78">
+            </div>
+            
+            <div class="form-group">
+                <label for="memberAvailability" class="form-label">Disponibilité</label>
+                <select id="memberAvailability" name="availability" class="form-select">
+                    <option value="disponible">Disponible</option>
+                    <option value="occupé">Occupé</option>
+                    <option value="indisponible">Indisponible</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="memberSkills" class="form-label">Compétences</label>
+                <input type="text" id="memberSkills" name="skills" class="form-input" placeholder="JavaScript, Python, Design... (séparez par des virgules)">
+            </div>
+            
+            <div class="form-group">
+                <label for="memberNotes" class="form-label">Notes</label>
+                <textarea id="memberNotes" name="notes" rows="3" class="form-input" placeholder="Informations supplémentaires sur ce membre..."></textarea>
+            </div>
+        </form>
+        
+        <div class="modal-footer">
+            <button type="button" onclick="closeAddMemberModal()" class="btn btn-secondary">
+                Annuler
+            </button>
+            <button type="submit" form="addMemberForm" class="btn btn-primary">
+                <i class="fas fa-user-plus mr-2"></i>Ajouter le membre
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal d'édition de membre -->
+<div id="editMemberModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Modifier un membre</h2>
+            <button onclick="closeEditMemberModal()" class="modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="editMemberForm" class="modal-body">
+            <input type="hidden" id="editMemberId">
+            
+            <div class="form-group">
+                <label for="editMemberName" class="form-label">Nom du membre *</label>
+                <input type="text" id="editMemberName" name="name" required class="form-input">
+            </div>
+            
+            <div class="form-group">
+                <label for="editMemberEmail" class="form-label">Email</label>
+                <input type="email" id="editMemberEmail" name="email" class="form-input">
+            </div>
+            
+            <div class="form-group">
+                <label for="editMemberRole" class="form-label">Rôle</label>
+                <select id="editMemberRole" name="role_id" class="form-select">
+                    <option value="">Aucun rôle</option>
+                    <!-- Les rôles seront chargés dynamiquement -->
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="editMemberPhone" class="form-label">Téléphone</label>
+                <input type="tel" id="editMemberPhone" name="phone" class="form-input">
+            </div>
+            
+            <div class="form-group">
+                <label for="editMemberAvailability" class="form-label">Disponibilité</label>
+                <select id="editMemberAvailability" name="availability" class="form-select">
+                    <option value="disponible">Disponible</option>
+                    <option value="occupé">Occupé</option>
+                    <option value="indisponible">Indisponible</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="editMemberSkills" class="form-label">Compétences</label>
+                <input type="text" id="editMemberSkills" name="skills" class="form-input" placeholder="JavaScript, Python, Design... (séparez par des virgules)">
+            </div>
+            
+            <div class="form-group">
+                <label for="editMemberNotes" class="form-label">Notes</label>
+                <textarea id="editMemberNotes" name="notes" rows="3" class="form-input"></textarea>
+            </div>
+        </form>
+        
+        <div class="modal-footer">
+            <button type="button" onclick="closeEditMemberModal()" class="btn btn-secondary">
+                Annuler
+            </button>
+            <button type="submit" form="editMemberForm" class="btn btn-primary">
+                <i class="fas fa-save mr-2"></i>Enregistrer les modifications
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Styles pour les modales -->
+<style>
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+    flex: 1;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    padding: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.form-input, .form-select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.form-input:focus, .form-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2563eb;
+}
+
+.btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover {
+    background: #e5e7eb;
+}
+</style>
+
+<!-- Script unifié pour la gestion des membres, rôles et drag & drop -->
+<script>
+// Variables globales pour les membres et rôles
+let allRoles = [];
+let projectMembers = [];
+const currentProjectId = '{{ project.id }}';
+
+// Fonctions pour la gestion des rôles
+function openManageRolesModal() {
+    console.log('Ouverture de la modale de gestion des rôles');
+    document.getElementById('manageRolesModal').classList.add('show');
+    loadRoles();
+}
+
+function closeManageRolesModal() {
+    document.getElementById('manageRolesModal').classList.remove('show');
+}
+
+function openCreateRoleModal() {
+    const roleModalTitle = document.getElementById('roleModalTitle');
+    if (roleModalTitle) roleModalTitle.textContent = 'Créer un rôle';
+    document.getElementById('roleForm').reset();
+    document.getElementById('roleId').value = '';
+    document.getElementById('roleModal').classList.add('show');
+}
+
+function openEditRoleModal(roleId) {
+    const role = allRoles.find(r => r.id === roleId);
+    if (!role) return;
+    
+    const roleModalTitle = document.getElementById('roleModalTitle');
+    if (roleModalTitle) roleModalTitle.textContent = 'Modifier le rôle';
+    document.getElementById('roleId').value = role.id;
+    document.getElementById('roleName').value = role.name;
+    document.getElementById('roleDescription').value = role.description || '';
+    document.getElementById('roleColor').value = role.color || '#6B7280';
+    document.getElementById('roleColorText').value = role.color || '#6B7280';
+    
+    // Cocher les permissions
+    const checkboxes = document.querySelectorAll('input[name="permissions"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = role.permissions && role.permissions.includes(checkbox.value);
+    });
+    
+    document.getElementById('roleModal').classList.add('show');
+}
+
+function closeRoleModal() {
+    document.getElementById('roleModal').classList.remove('show');
+}
+
+function loadRoles() {
+    console.log('Chargement des rôles...');
+    fetch('/api/roles')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                allRoles = data.roles;
+                displayRoles();
+                updateRoleSelects();
+                console.log('Rôles chargés:', allRoles.length);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading roles:', error);
+        });
+}
+
+function displayRoles() {
+    const rolesList = document.getElementById('rolesList');
+    
+    if (allRoles.length === 0) {
+        rolesList.innerHTML = '<p class="text-gray-500 text-center py-4">Aucun rôle créé</p>';
+        return;
+    }
+    
+    rolesList.innerHTML = allRoles.map(role => `
+        <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-4 h-4 rounded-full" style="background-color: ${role.color || '#6B7280'}"></div>
+                    <div>
+                        <h4 class="font-semibold text-gray-800">${role.name}</h4>
+                        <p class="text-sm text-gray-600">${role.description || 'Aucune description'}</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="openEditRoleModal('${role.id}')" class="text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="deleteRole('${role.id}')" class="text-red-600 hover:text-red-800">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateRoleSelects() {
+    const selects = [document.getElementById('memberRole'), document.getElementById('editMemberRole')];
+    
+    selects.forEach(select => {
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">Aucun rôle</option>' +
+            allRoles.map(role => `<option value="${role.id}">${role.name}</option>`).join('');
+        select.value = currentValue;
+    });
+}
+
+function deleteRole(roleId) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce rôle ?')) return;
+    
+    fetch(`/api/roles/${roleId}`, {
+        method: 'DELETE'
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadRoles();
+                showNotification('Rôle supprimé avec succès');
+            } else {
+                alert('Erreur: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur lors de la suppression du rôle');
+        });
+}
+
+// Fonctions pour la gestion des membres
+function openAddMemberModal() {
+    console.log('Ouverture de la modale d\'ajout de membre');
+    document.getElementById('addMemberForm').reset();
+    document.getElementById('addMemberModal').classList.add('show');
+}
+
+function closeAddMemberModal() {
+    document.getElementById('addMemberModal').classList.remove('show');
+}
+
+function openEditMemberModal(memberId) {
+    const member = projectMembers.find(m => m.id === memberId);
+    if (!member) return;
+    
+    document.getElementById('editMemberId').value = member.id;
+    document.getElementById('editMemberName').value = member.name;
+    document.getElementById('editMemberEmail').value = member.email || '';
+    document.getElementById('editMemberRole').value = member.role_id || '';
+    document.getElementById('editMemberPhone').value = member.phone || '';
+    document.getElementById('editMemberAvailability').value = member.availability || 'disponible';
+    document.getElementById('editMemberSkills').value = member.skills ? member.skills.join(', ') : '';
+    document.getElementById('editMemberNotes').value = member.notes || '';
+    
+    document.getElementById('editMemberModal').classList.add('show');
+}
+
+function closeEditMemberModal() {
+    document.getElementById('editMemberModal').classList.remove('show');
+}
+
+function loadProjectMembers() {
+    console.log('Chargement des membres du projet:', currentProjectId);
+    fetch(`/api/projects/${currentProjectId}/members`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                projectMembers = data.members;
+                displayProjectMembers();
+                console.log('Membres chargés:', projectMembers.length);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading members:', error);
+        });
+}
+
+function displayProjectMembers() {
+    const tbody = document.getElementById('projectMembersTableBody');
+    const noMessage = document.getElementById('noProjectMembersMessage');
+    
+    if (projectMembers.length === 0) {
+        tbody.innerHTML = '';
+        noMessage.classList.remove('hidden');
+        return;
+    }
+    
+    noMessage.classList.add('hidden');
+    
+    tbody.innerHTML = projectMembers.map(member => {
+        const availabilityColors = {
+            'disponible': 'bg-green-100 text-green-800',
+            'occupé': 'bg-yellow-100 text-yellow-800',
+            'indisponible': 'bg-red-100 text-red-800'
+        };
+        
+        const roleBadge = member.role ? 
+            `<span class="px-2 py-1 rounded-full text-xs font-medium" style="background-color: ${member.role.color}20; color: ${member.role.color}">${member.role.name}</span>` :
+            '<span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Aucun rôle</span>';
+        
+        return `
+            <tr>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${member.name}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${member.email || '-'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">${roleBadge}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    <span class="px-2 py-1 rounded-full text-xs font-medium ${availabilityColors[member.availability] || availabilityColors['disponible']}">
+                        ${member.availability || 'disponible'}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-500">
+                    ${member.skills ? member.skills.slice(0, 3).map(skill => 
+                        `<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs mr-1">${skill}</span>`
+                    ).join('') : '-'}
+                    ${member.skills && member.skills.length > 3 ? '...' : ''}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button onclick="openEditMemberModal('${member.id}')" class="text-blue-600 hover:text-blue-900 mr-3">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="deleteMember('${member.id}')" class="text-red-600 hover:text-red-900">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function deleteMember(memberId) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce membre ?')) return;
+    
+    fetch(`/api/project_members/${memberId}`, {
+        method: 'DELETE'
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadProjectMembers();
+                showNotification('Membre supprimé avec succès');
+            } else {
+                alert('Erreur: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur lors de la suppression du membre');
+        });
+}
+
+function showNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-20 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-opacity duration-300';
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 300);
+    }, 3000);
+}
+
+// Gestion des formulaires
+document.getElementById('roleForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const roleId = document.getElementById('roleId').value;
+    const roleData = Object.fromEntries(formData);
+    
+    // Gérer les permissions
+    const permissions = Array.from(document.querySelectorAll('input[name="permissions"]:checked'))
+        .map(checkbox => checkbox.value);
+    roleData.permissions = permissions;
+    
+    const isEdit = roleId !== '';
+    const url = isEdit ? `/api/roles/${roleId}` : '/api/roles';
+    const method = isEdit ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(roleData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeRoleModal();
+            closeManageRolesModal();
+            loadRoles();
+            showNotification(isEdit ? 'Rôle modifié avec succès' : 'Rôle créé avec succès');
+        } else {
+            alert('Erreur: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur lors de la sauvegarde du rôle');
+    });
+});
+
+document.getElementById('addMemberForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const memberData = Object.fromEntries(formData);
+    
+    // Gérer les compétences
+    if (memberData.skills) {
+        memberData.skills = memberData.skills.split(',').map(skill => skill.trim()).filter(skill => skill);
+    }
+    
+    fetch(`/api/projects/${currentProjectId}/members`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(memberData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeAddMemberModal();
+            loadProjectMembers();
+            showNotification('Membre ajouté avec succès');
+        } else {
+            alert('Erreur: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur lors de l\'ajout du membre');
+    });
+});
+
+document.getElementById('editMemberForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const memberData = Object.fromEntries(formData);
+    const memberId = document.getElementById('editMemberId').value;
+    
+    // Gérer les compétences
+    if (memberData.skills) {
+        memberData.skills = memberData.skills.split(',').map(skill => skill.trim()).filter(skill => skill);
+    }
+    
+    fetch(`/api/project_members/${memberId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(memberData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeEditMemberModal();
+            loadProjectMembers();
+            showNotification('Membre modifié avec succès');
+        } else {
+            alert('Erreur: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur lors de la modification du membre');
+    });
+});
+
+// Synchronisation du sélecteur de couleur
+document.getElementById('roleColor').addEventListener('input', function(e) {
+    document.getElementById('roleColorText').value = e.target.value;
+});
+
+document.getElementById('roleColorText').addEventListener('input', function(e) {
+    if (/^#[0-9A-F]{6}$/i.test(e.target.value)) {
+        document.getElementById('roleColor').value = e.target.value;
+    }
+});
+
+// Fermer les modales en cliquant à l'extérieur
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal')) {
+        e.target.classList.remove('show');
+    }
+});
+
+// Système de drag & drop pour le kanban (code existant)
+// Créer l'objet global KanbanDragDrop pour les autres scripts
+window.KanbanDragDrop = {
+    init: function() {
+        console.log('🚀 Initialisation de KanbanDragDrop');
+        if (typeof initializeKanbanDragDrop === 'function') {
+            initializeKanbanDragDrop();
+        }
+    },
+    
+    // Réinitialiser le drag & drop pour les nouvelles tâches
+    reinit: function() {
+        console.log('🔄 Réinitialisation de KanbanDragDrop');
+        setTimeout(() => {
+            if (typeof initializeKanbanDragDrop === 'function') {
+                initializeKanbanDragDrop();
+            }
+        }, 100);
+    }
+};
+
+// Initialisation au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📱 DOM chargé - Initialisation complète');
+    
+    // Initialiser la gestion des membres et rôles
+    loadRoles();
+    loadProjectMembers();
+    
+    // Initialiser le drag & drop après un court délai
+    setTimeout(() => {
+        window.KanbanDragDrop.init();
+    }, 500);
+});
+
+// Rendre les fonctions globales accessibles
+window.openManageRolesModal = openManageRolesModal;
+window.openAddMemberModal = openAddMemberModal;
+window.openEditMemberModal = openEditMemberModal;
+window.openEditRoleModal = openEditRoleModal;
+window.deleteRole = deleteRole;
+window.deleteMember = deleteMember;
+
+// Fonction de débogage pour tester les boutons
+window.debugButtons = function() {
+    console.log('🔍 Débogage des boutons de gestion des membres');
+    
+    // Vérifier que les fonctions existent
+    console.log('Fonctions disponibles:');
+    console.log('- openManageRolesModal:', typeof window.openManageRolesModal);
+    console.log('- openAddMemberModal:', typeof window.openAddMemberModal);
+    console.log('- switchTab:', typeof window.switchTab);
+    
+    // Vérifier que les éléments DOM existent
+    console.log('Éléments DOM:');
+    console.log('- manageRolesModal:', !!document.getElementById('manageRolesModal'));
+    console.log('- addMemberModal:', !!document.getElementById('addMemberModal'));
+    console.log('- members tab:', !!document.getElementById('members'));
+    
+    // Vérifier que les boutons existent
+    const manageRolesBtn = Array.from(document.querySelectorAll('button')).find(btn => 
+        btn.textContent.includes('Gérer les rôles')
+    );
+    const addMemberBtn = Array.from(document.querySelectorAll('button')).find(btn => 
+        btn.textContent.includes('Ajouter un membre')
+    );
+    
+    console.log('Boutons trouvés:');
+    console.log('- Bouton "Gérer les rôles":', !!manageRolesBtn);
+    console.log('- Bouton "Ajouter un membre":', !!addMemberBtn);
+    
+    // Test direct des fonctions
+    try {
+        console.log('🧪 Test direct des fonctions:');
+        if (typeof window.openManageRolesModal === 'function') {
+            console.log('✅ openManageRolesModal est une fonction');
+        } else {
+            console.log('❌ openManageRolesModal n\'est pas une fonction');
+        }
+        
+        if (typeof window.openAddMemberModal === 'function') {
+            console.log('✅ openAddMemberModal est une fonction');
+        } else {
+            console.log('❌ openAddMemberModal n\'est pas une fonction');
+        }
+        
+        // Test de changement d'onglet
+        if (typeof window.switchTab === 'function') {
+            console.log('✅ switchTab est une fonction');
+            console.log('Test: changement vers l\'onglet membres...');
+            window.switchTab('members');
+        } else {
+            console.log('❌ switchTab n\'est pas une fonction');
+        }
+    } catch (error) {
+        console.error('❌ Erreur lors du test des fonctions:', error);
+    }
+    
+    console.log('🏁 Débogage terminé!');
+};
+
+// Charger les fichiers lors de l'affichage de l'onglet fichiers
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        // Toujours charger les fichiers au chargement de la page pour éviter la disparition après rafraîchissement
+        console.log('🔄 Chargement initial des fichiers...');
+        
+        // Test simple pour vérifier si la fonction existe
+        if (typeof loadProjectFiles === 'function') {
+            console.log('✅ Fonction loadProjectFiles trouvée');
+            loadProjectFiles();
+        } else {
+            console.error('❌ Fonction loadProjectFiles NON trouvée!');
+        }
+    } catch (error) {
+        console.error('❌ Erreur lors du chargement initial des fichiers:', error);
+        // Essayer de charger les fichiers même en cas d'erreur
+        try {
+            if (typeof loadProjectFiles === 'function') {
+                loadProjectFiles();
+            }
+        } catch (e) {
+            console.error('❌ Impossible de charger les fichiers:', e);
+        }
+    }
+    
+    // Ajouter un écouteur pour le changement d'onglet
+    const originalSwitchTab = window.switchTab;
+    window.switchTab = function(tabName) {
+        if (originalSwitchTab) {
+            originalSwitchTab(tabName);
+        }
+        
+        if (tabName === 'files') {
+            loadProjectFiles();
+        }
+    };
+    
+    // Charger les fichiers si l'onglet fichiers est déjà actif
+    const activeTab = document.querySelector('.tab-pane.active');
+    if (activeTab && activeTab.id === 'files') {
+        loadProjectFiles();
+    }
+    
+    // Restaurer l'onglet sauvegardé après un petit délai
+    setTimeout(restoreActiveTab, 100);
+});
+
+// Restaurer l'onglet sauvegardé au chargement de la page
+function restoreActiveTab() {
+    try {
+        const savedTab = localStorage.getItem('activeProjectTab');
+        if (savedTab) {
+            console.log('🔄 Restauration de l\'onglet:', savedTab);
+            switchTab(savedTab);
+        } else {
+            // Par défaut, activer le premier onglet
+            console.log('🔄 Aucun onglet sauvegardé, activation de overview');
+            switchTab('overview');
+        }
+    } catch (error) {
+        console.error('❌ Erreur lors de la restauration de l\'onglet:', error);
+    }
+}
+
+// Fallback au cas où DOMContentLoaded ne fonctionne pas à cause des erreurs
+setTimeout(() => {
+    try {
+        console.log('🔄 Fallback - Tentative de chargement des fichiers...');
+        if (typeof loadProjectFiles === 'function') {
+            loadProjectFiles();
+        }
+    } catch (error) {
+        console.error('❌ Erreur dans le fallback:', error);
+    }
+}, 1000);
+
+// Forcer le chargement des fichiers toutes les 2 secondes (solution temporaire)
+setInterval(() => {
+    try {
+        console.log('🔄 Forçage du chargement des fichiers...');
+        if (typeof loadProjectFiles === 'function') {
+            loadProjectFiles();
+        }
+    } catch (error) {
+        console.error('❌ Erreur dans le forçage:', error);
+    }
+}, 2000);
+</script>
+
+{% endblock %}

@@ -1,0 +1,1193 @@
+{% extends "base.html" %}
+
+{% block title %}Éditeur de note - SOS Thomas{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-screen pt-0">
+    <!-- Barre d'outils compacte -->
+    <div class="bg-gradient-to-r from-blue-100 to-blue-200 border-b border-blue-300 px-3 py-1 shadow-md fixed top-20 left-72 right-0 z-50">
+        <!-- Ligne 1 : Outils de texte de base -->
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
+            <div class="flex items-center space-x-2">
+                <!-- Police et taille -->
+                <div class="flex items-center space-x-1 bg-white rounded-md px-2 py-1 shadow-sm border border-gray-200">
+                    <i class="fas fa-font text-gray-600 text-xs"></i>
+                    <select id="fontFamily" class="outline-none text-xs bg-transparent w-20">
+                        <option value="Arial">Arial</option>
+                        <option value="Times New Roman">Times</option>
+                        <option value="Calibri">Calibri</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Georgia">Georgia</option>
+                    </select>
+                    <select id="fontSize" class="outline-none text-xs bg-transparent w-12">
+                        <option value="10">10</option>
+                        <option value="12" selected>12</option>
+                        <option value="14">14</option>
+                        <option value="16">16</option>
+                        <option value="18">18</option>
+                        <option value="20">20</option>
+                        <option value="24">24</option>
+                    </select>
+                </div>
+                
+                <!-- Styles de texte -->
+                <div class="flex items-center space-x-0 bg-white rounded-md p-0.5 shadow-sm border border-gray-200">
+                    <button id="boldBtn" class="px-2 py-1 rounded hover:bg-blue-100 transition-all duration-200 group" title="Gras">
+                        <i class="fas fa-bold text-gray-700 text-xs group-hover:text-blue-600"></i>
+                    </button>
+                    <button id="italicBtn" class="px-2 py-1 rounded hover:bg-blue-100 transition-all duration-200 group" title="Italique">
+                        <i class="fas fa-italic text-gray-700 text-xs group-hover:text-blue-600"></i>
+                    </button>
+                    <button id="underlineBtn" class="px-2 py-1 rounded hover:bg-blue-100 transition-all duration-200 group" title="Souligné">
+                        <i class="fas fa-underline text-gray-700 text-xs group-hover:text-blue-600"></i>
+                    </button>
+                </div>
+                
+                <!-- Couleurs -->
+                <div class="flex items-center space-x-1 bg-white rounded-md px-1 py-1 shadow-sm border border-gray-200">
+                    <input type="color" id="textColor" class="w-5 h-5 rounded cursor-pointer border border-gray-300" value="#000000" title="Texte">
+                    <input type="color" id="bgColor" class="w-5 h-5 rounded cursor-pointer border border-gray-300" value="#ffffff" title="Fond">
+                </div>
+                
+                <!-- Alignement -->
+                <div class="flex items-center space-x-0 bg-white rounded-md p-0.5 shadow-sm border border-gray-200">
+                    <button id="alignLeft" class="px-2 py-1 rounded hover:bg-blue-100 transition-all duration-200 group" title="Gauche">
+                        <i class="fas fa-align-left text-gray-700 text-xs group-hover:text-blue-600"></i>
+                    </button>
+                    <button id="alignCenter" class="px-2 py-1 rounded hover:bg-blue-100 transition-all duration-200 group" title="Centre">
+                        <i class="fas fa-align-center text-gray-700 text-xs group-hover:text-blue-600"></i>
+                    </button>
+                    <button id="alignRight" class="px-2 py-1 rounded hover:bg-blue-100 transition-all duration-200 group" title="Droite">
+                        <i class="fas fa-align-right text-gray-700 text-xs group-hover:text-blue-600"></i>
+                    </button>
+                </div>
+                
+                <!-- Formes et flèches -->
+                <div class="flex items-center space-x-0 bg-white rounded-md p-0.5 shadow-sm border border-gray-200">
+                    <button id="shapeBtn" class="px-2 py-1 rounded hover:bg-green-100 transition-all duration-200 group" title="Formes">
+                        <i class="fas fa-shapes text-gray-700 text-xs group-hover:text-green-600"></i>
+                    </button>
+                    <button id="arrowBtn" class="px-2 py-1 rounded hover:bg-green-100 transition-all duration-200 group" title="Flèches">
+                        <i class="fas fa-long-arrow-alt-right text-gray-700 text-xs group-hover:text-green-600"></i>
+                    </button>
+                    <button id="lineBtn" class="px-2 py-1 rounded hover:bg-green-100 transition-all duration-200 group" title="Lignes">
+                        <i class="fas fa-minus text-gray-700 text-xs group-hover:text-green-600"></i>
+                    </button>
+                </div>
+                
+                <!-- Images et médias -->
+                <div class="flex items-center space-x-0 bg-white rounded-md p-0.5 shadow-sm border border-gray-200">
+                    <button id="imageBtn" class="px-2 py-1 rounded hover:bg-purple-100 transition-all duration-200 group" title="Image">
+                        <i class="fas fa-image text-gray-700 text-xs group-hover:text-purple-600"></i>
+                    </button>
+                    <button id="drawBtn" class="px-2 py-1 rounded hover:bg-purple-100 transition-all duration-200 group" title="Dessin">
+                        <i class="fas fa-paint-brush text-gray-700 text-xs group-hover:text-purple-600"></i>
+                    </button>
+                </div>
+                
+                <!-- Stickers -->
+                <div class="flex items-center space-x-0 bg-white rounded-md p-0.5 shadow-sm border border-gray-200">
+                    <button id="stickerBtn" class="px-2 py-1 rounded hover:bg-yellow-100 transition-all duration-200 group" title="Stickers">
+                        <i class="fas fa-smile text-gray-700 text-xs group-hover:text-yellow-600"></i>
+                    </button>
+                    <button id="emojiBtn" class="px-2 py-1 rounded hover:bg-yellow-100 transition-all duration-200 group" title="Émojis">
+                        <i class="fas fa-laugh text-gray-700 text-xs group-hover:text-yellow-600"></i>
+                    </button>
+                </div>
+                
+                <!-- Actions -->
+                <div class="flex items-center space-x-0 bg-white rounded-md p-0.5 shadow-sm border border-gray-200">
+                    <button id="undoBtn" class="px-2 py-1 rounded hover:bg-gray-100 transition-all duration-200 group" title="Annuler">
+                        <i class="fas fa-undo text-gray-700 text-xs group-hover:text-gray-600"></i>
+                    </button>
+                    <button id="redoBtn" class="px-2 py-1 rounded hover:bg-gray-100 transition-all duration-200 group" title="Rétablir">
+                        <i class="fas fa-redo text-gray-700 text-xs group-hover:text-gray-600"></i>
+                    </button>
+                    <button id="printBtn" class="px-2 py-1 rounded hover:bg-gray-100 transition-all duration-200 group" title="Imprimer">
+                        <i class="fas fa-print text-gray-700 text-xs group-hover:text-gray-600"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Format de page et couleurs -->
+            <div class="flex items-center space-x-2">
+                <div class="flex items-center space-x-1 bg-white rounded-md px-2 py-1 shadow-sm border border-gray-200">
+                    <i class="fas fa-file text-gray-600 text-xs"></i>
+                    <select id="pageSize" class="outline-none text-xs bg-transparent">
+                        <option value="a4">A4</option>
+                        <option value="a3">A3</option>
+                        <option value="a5">A5</option>
+                        <option value="letter">Lettre</option>
+                        <option value="b4">B4</option>
+                        <option value="b5">B5</option>
+                    </select>
+                </div>
+                
+                <!-- Orientation -->
+                <div class="flex items-center space-x-1 bg-white rounded-md px-2 py-1 shadow-sm border border-gray-200">
+                    <i class="fas fa-compass text-gray-600 text-xs"></i>
+                    <select id="pageOrientation" class="outline-none text-xs bg-transparent">
+                        <option value="portrait">Portrait</option>
+                        <option value="landscape">Paysage</option>
+                    </select>
+                </div>
+                
+                <!-- Couleurs de page -->
+                <div class="flex items-center space-x-1 bg-white rounded-md px-2 py-1 shadow-sm border border-gray-200">
+                    <i class="fas fa-palette text-gray-600 text-xs"></i>
+                    <input type="color" id="pageBgColor" class="w-5 h-5 rounded cursor-pointer border border-gray-300" value="#ffffff" title="Fond de page">
+                    <input type="color" id="pageLineColor" class="w-5 h-5 rounded cursor-pointer border border-gray-300" value="#e5e5e5" title="Couleur des lignes">
+                </div>
+                
+                <button id="saveBtn" class="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-all duration-200 text-xs" title="Enregistrer">
+                    <i class="fas fa-save mr-1"></i>Enreg.
+                </button>
+                <a href="{{ url_for('notes') }}" class="px-3 py-1 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-all duration-200 text-xs" title="Fermer">
+                    <i class="fas fa-times mr-1"></i>Fermer
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Panneaux latéraux cachés -->
+    <!-- Panneau des formes -->
+    <div id="shapesPanel" class="hidden fixed right-4 top-20 bg-white rounded-lg shadow-xl p-4 z-50 w-64">
+        <h3 class="font-semibold text-sm mb-3 text-gray-800">Formes</h3>
+        <div class="grid grid-cols-3 gap-2">
+            <button onclick="insertShape('rectangle')" class="p-3 border rounded hover:bg-gray-100" title="Rectangle">
+                <div class="w-8 h-6 border-2 border-gray-600"></div>
+            </button>
+            <button onclick="insertShape('circle')" class="p-3 border rounded hover:bg-gray-100" title="Cercle">
+                <div class="w-6 h-6 border-2 border-gray-600 rounded-full"></div>
+            </button>
+            <button onclick="insertShape('triangle')" class="p-3 border rounded hover:bg-gray-100" title="Triangle">
+                <div class="w-0 h-0 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-gray-600"></div>
+            </button>
+            <button onclick="insertShape('star')" class="p-3 border rounded hover:bg-gray-100" title="Étoile">
+                <i class="fas fa-star text-gray-600 text-lg"></i>
+            </button>
+            <button onclick="insertShape('heart')" class="p-3 border rounded hover:bg-gray-100" title="Cœur">
+                <i class="fas fa-heart text-gray-600 text-lg"></i>
+            </button>
+            <button onclick="insertShape('diamond')" class="p-3 border rounded hover:bg-gray-100" title="Losange">
+                <div class="w-6 h-6 border-2 border-gray-600 transform rotate-45"></div>
+            </button>
+        </div>
+        <button onclick="togglePanel('shapesPanel')" class="mt-3 text-xs text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times mr-1"></i>Fermer
+        </button>
+    </div>
+    
+    <!-- Panneau des flèches -->
+    <div id="arrowsPanel" class="hidden fixed right-4 top-20 bg-white rounded-lg shadow-xl p-4 z-50 w-64">
+        <h3 class="font-semibold text-sm mb-3 text-gray-800">Flèches</h3>
+        <div class="grid grid-cols-3 gap-2">
+            <button onclick="insertArrow('right')" class="p-3 border rounded hover:bg-gray-100" title="Flèche droite">
+                <i class="fas fa-arrow-right text-gray-600 text-lg"></i>
+            </button>
+            <button onclick="insertArrow('left')" class="p-3 border rounded hover:bg-gray-100" title="Flèche gauche">
+                <i class="fas fa-arrow-left text-gray-600 text-lg"></i>
+            </button>
+            <button onclick="insertArrow('up')" class="p-3 border rounded hover:bg-gray-100" title="Flèche haut">
+                <i class="fas fa-arrow-up text-gray-600 text-lg"></i>
+            </button>
+            <button onclick="insertArrow('down')" class="p-3 border rounded hover:bg-gray-100" title="Flèche bas">
+                <i class="fas fa-arrow-down text-gray-600 text-lg"></i>
+            </button>
+            <button onclick="insertArrow('up-right')" class="p-3 border rounded hover:bg-gray-100" title="Flèche diagonale">
+                <i class="fas fa-arrow-up rotate-45 text-gray-600 text-lg"></i>
+            </button>
+            <button onclick="insertArrow('double')" class="p-3 border rounded hover:bg-gray-100" title="Flèche double">
+                <i class="fas fa-arrows-alt-h text-gray-600 text-lg"></i>
+            </button>
+        </div>
+        <button onclick="togglePanel('arrowsPanel')" class="mt-3 text-xs text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times mr-1"></i>Fermer
+        </button>
+    </div>
+    
+    <!-- Panneau des stickers -->
+    <div id="stickersPanel" class="hidden fixed right-4 top-36 bg-white rounded-lg shadow-xl p-4 z-50 w-80 max-h-96 overflow-y-auto">
+        <h3 class="font-semibold text-sm mb-3 text-gray-800">Stickers</h3>
+        
+        <!-- Catégories de stickers -->
+        <div class="flex space-x-2 mb-3 border-b">
+            <button onclick="showStickerCategory('notes')" class="px-2 py-1 text-xs border-b-2 border-blue-500 text-blue-600">Notes</button>
+            <button onclick="showStickerCategory('emotions')" class="px-2 py-1 text-xs hover:text-blue-600">Émotions</button>
+            <button onclick="showStickerCategory('animals')" class="px-2 py-1 text-xs hover:text-blue-600">Animaux</button>
+            <button onclick="showStickerCategory('food')" class="px-2 py-1 text-xs hover:text-blue-600">Nourriture</button>
+            <button onclick="showStickerCategory('objects')" class="px-2 py-1 text-xs hover:text-blue-600">Objets</button>
+            <button onclick="showStickerCategory('celebration')" class="px-2 py-1 text-xs hover:text-blue-600">Fête</button>
+        </div>
+        
+        <!-- Contenu des stickers -->
+        <div id="stickerContent" class="grid grid-cols-4 gap-2">
+            <!-- Les stickers seront chargés ici -->
+        </div>
+        
+        <button onclick="togglePanel('stickersPanel')" class="mt-3 text-xs text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times mr-1"></i>Fermer
+        </button>
+    </div>
+    
+    <!-- Zone d'édition -->
+    <div class="flex-1 bg-gray-72 p-8 overflow-auto pt-20" style="margin-left: 280px;">
+        <div class="flex justify-center">
+            <div id="pageContainer" class="bg-white shadow-lg relative" style="width: 210mm; min-height: 297mm;">
+                <!-- Lignes de la page -->
+                <div id="pageLines" class="absolute inset-0 pointer-events-none" style="background-image: repeating-linear-gradient(to bottom, transparent, transparent 24px, #e5e5e5 24px, #e5e5e5 25px);"></div>
+                
+                <!-- Zone de texte éditable -->
+                <div id="textEditor" contenteditable="true" class="relative z-10 p-12 outline-none" style="min-height: 273mm; font-family: 'Times New Roman'; font-size: 12pt; line-height: 25px;">
+                    <h1 id="noteTitle" contenteditable="true" class="text-2xl font-bold mb-4 outline-none" placeholder="Titre de la note">Titre de la note</h1>
+                    <div id="noteContent" contenteditable="true" class="outline-none" placeholder="Commencez à écrire votre note ici...">
+                        Commencez à écrire votre note ici...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Barre de navigation latérale droite -->
+    <div class="fixed right-0 top-36 bottom-0 w-4 bg-gray-200 z-40 flex flex-col">
+        <!-- Curseur de position -->
+        <div id="scrollCursor" class="relative flex-1 bg-blue-500 w-2 mx-auto rounded-full transition-all duration-200" style="height: 20px;">
+            <div class="absolute inset-0 flex items-center justify-center">
+                <div class="w-1 h-1 bg-white rounded-full"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Styles pour les boutons actifs */
+.btn-active {
+    background-color: #3b82f6 !important;
+    color: white !important;
+}
+
+.btn-active i {
+    color: white !important;
+}
+
+/* Styles pour les boutons hover améliorés */
+button:hover {
+    transform: translateY(-1px);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+/* Animation de sauvegarde */
+@keyframes saveAnimation {
+    0% { background-color: #3b82f6; }
+    50% { background-color: #10b981; }
+    100% { background-color: #3b82f6; }
+}
+
+.saving {
+    animation: saveAnimation 1s ease-in-out;
+}
+
+/* Effet de focus pour l'éditeur */
+#textEditor:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* Tailles de page */
+.page-a4 {
+    width: 210mm !important;
+    min-height: 297mm !important;
+}
+
+.page-a3 {
+    width: 297mm !important;
+    min-height: 420mm !important;
+}
+
+.page-a5 {
+    width: 148mm !important;
+    min-height: 210mm !important;
+}
+
+.page-letter {
+    width: 8.5in !important;
+    min-height: 11in !important;
+}
+
+.page-legal {
+    width: 8.5in !important;
+    min-height: 14in !important;
+}
+
+.page-b4 {
+    width: 250mm !important;
+    min-height: 353mm !important;
+}
+
+.page-b5 {
+    width: 176mm !important;
+    min-height: 250mm !important;
+}
+
+/* Orientation paysage */
+.page-a4.landscape {
+    width: 297mm !important;
+    min-height: 210mm !important;
+}
+
+.page-a3.landscape {
+    width: 420mm !important;
+    min-height: 297mm !important;
+}
+
+.page-a5.landscape {
+    width: 210mm !important;
+    min-height: 148mm !important;
+}
+
+.page-letter.landscape {
+    width: 11in !important;
+    min-height: 8.5in !important;
+}
+
+.page-b4.landscape {
+    width: 353mm !important;
+    min-height: 250mm !important;
+}
+
+.page-b5.landscape {
+    width: 250mm !important;
+    min-height: 176mm !important;
+}
+
+/* Zone d'édition sans défilement */
+.flex-1.bg-gray-100 {
+    overflow: hidden;
+}
+
+/* Masquer les barres de défilement */
+::-webkit-scrollbar {
+    display: none;
+}
+
+/* Pour Firefox */
+html {
+    scrollbar-width: none;
+}
+
+/* Pour Internet Explorer et Edge */
+body {
+    -ms-overflow-style: none;
+}
+
+/* Barre d'outils bleu pastel */
+.bg-blue-100 .text-gray-600,
+.bg-blue-200 .text-gray-600 {
+    color: #60a5fa !important; /* Bleu clair */
+}
+
+.bg-blue-100 i,
+.bg-blue-200 i {
+    color: #93c5fd !important; /* Bleu encore plus clair */
+}
+
+.bg-blue-100 .bg-white,
+.bg-blue-200 .bg-white {
+    background-color: #dbeafe !important; /* Bleu très clair */
+    border-color: #93c5fd !important;
+}
+
+.bg-blue-100 button,
+.bg-blue-200 button {
+    color: #60a5fa !important;
+}
+
+.bg-blue-100 button:hover,
+.bg-blue-200 button:hover {
+    color: #3b82f6 !important;
+    background-color: #bfdbfe !important;
+}
+
+/* Placeholder pour contenteditable */
+[contenteditable="true"]:empty:before {
+    content: attr(placeholder);
+    color: #9ca3af;
+    pointer-events: none;
+}
+
+/* Animation des icônes */
+@keyframes iconPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.group:hover i {
+    animation: iconPulse 0.3s ease-in-out;
+}
+
+/* Impression */
+@media print {
+    body {
+        background: white;
+    }
+    
+    .bg-gray-100 {
+        background: white;
+        padding: 0;
+    }
+    
+    #pageContainer {
+        box-shadow: none;
+        margin: 0;
+    }
+    
+    #pageLines {
+        display: none;
+    }
+    
+    .border-b {
+        display: none;
+    }
+}
+</style>
+
+<script>
+// Variables globales
+let currentAlignment = 'left';
+let currentListType = null;
+let noteData = {
+    title: '',
+    content: '',
+    folder: '{{ request.args.get("folder", "general") }}',
+    created_at: new Date().toISOString()
+};
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', function() {
+    initializeEditor();
+    loadNoteData();
+    setupEventListeners();
+    setupNavigationRail();
+});
+
+// Configurer la barre de navigation latérale
+function setupNavigationRail() {
+    const scrollCursor = document.getElementById('scrollCursor');
+    const pageContainer = document.getElementById('pageContainer');
+    
+    // Mettre à jour la position du curseur lors du défilement
+    pageContainer.addEventListener('scroll', function() {
+        const scrollTop = pageContainer.scrollTop;
+        const scrollHeight = pageContainer.scrollHeight;
+        const clientHeight = pageContainer.clientHeight;
+        
+        // Calculer la position en pourcentage
+        const scrollPercentage = (scrollTop / (scrollHeight - clientHeight)) * 100;
+        
+        // Positionner le curseur verticalement
+        const cursorHeight = 20; // Hauteur du curseur
+        const railHeight = scrollCursor.parentElement.offsetHeight;
+        const maxTop = railHeight - cursorHeight;
+        const cursorTop = (scrollPercentage / 100) * maxTop;
+        
+        scrollCursor.style.transform = `translateY(${cursorTop}px)`;
+        
+        // Changer la couleur selon la position
+        if (scrollPercentage > 80) {
+            scrollCursor.classList.remove('bg-blue-500');
+            scrollCursor.classList.add('bg-green-500');
+        } else if (scrollPercentage > 50) {
+            scrollCursor.classList.remove('bg-blue-500', 'bg-green-500');
+            scrollCursor.classList.add('bg-yellow-500');
+        } else {
+            scrollCursor.classList.remove('bg-green-500', 'bg-yellow-500');
+            scrollCursor.classList.add('bg-blue-500');
+        }
+    });
+    
+    // Cliquer sur la barre pour naviguer
+    scrollCursor.parentElement.addEventListener('click', function(e) {
+        const rail = e.currentTarget;
+        const railHeight = rail.offsetHeight;
+        const clickY = e.clientY - rail.getBoundingClientRect().top;
+        
+        // Calculer la position de défilement cible
+        const scrollPercentage = (clickY / railHeight) * 100;
+        const scrollTarget = (scrollPercentage / 100) * (pageContainer.scrollHeight - pageContainer.clientHeight);
+        
+        // Défiler vers la position cible
+        pageContainer.scrollTo({
+            top: scrollTarget,
+            behavior: 'smooth'
+        });
+    });
+}
+
+// Initialiser l'éditeur
+function initializeEditor() {
+    // Appliquer la taille de page par défaut
+    updatePageSize('a4');
+    
+    // Focus sur le titre
+    document.getElementById('noteTitle').focus();
+}
+
+// Charger les données de la note si elles existent
+function loadNoteData() {
+    const noteId = '{{ request.args.get("note_id", "") }}';
+    if (noteId) {
+        // Charger les données depuis le serveur
+        fetch(`/api/notes/${noteId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    noteData = data.note;
+                    document.getElementById('noteTitle').textContent = noteData.title;
+                    document.getElementById('noteContent').innerHTML = noteData.content;
+                    
+                    // Ajouter la note à l'historique des notes récentes
+                    addToRecentHistory(noteId, noteData.title, noteData.folder || 'general');
+                }
+            })
+            .catch(error => console.error('Erreur lors du chargement de la note:', error));
+    } else {
+        // Vérifier s'il y a des données temporaires (nouvelle note)
+        const tempNoteData = sessionStorage.getItem('temp_note_data');
+        if (tempNoteData) {
+            const tempNote = JSON.parse(tempNoteData);
+            
+            // Initialiser noteData avec les données temporaires
+            noteData = {
+                title: tempNote.title,
+                content: '',
+                folder: tempNote.folder || 'general',
+                created_at: tempNote.created_at || new Date().toISOString()
+            };
+            
+            document.getElementById('noteTitle').textContent = tempNote.title;
+            
+            // Conserver les données temporaires pour la sauvegarde
+            sessionStorage.setItem('temp_note_data', JSON.stringify(tempNote));
+            
+            console.log('📝 Note temporaire chargée pour le dossier:', tempNote.folder);
+        }
+    }
+}
+
+// Fonction pour ajouter une note à l'historique (même fonction que dans notes.html)
+function addToRecentHistory(noteId, noteTitle, folderName) {
+    try {
+        // Récupérer l'historique existant
+        let recentNotes = JSON.parse(localStorage.getItem('recent_notes_history') || '[]');
+        
+        // Créer l'objet note
+        const noteData = {
+            id: noteId,
+            title: noteTitle,
+            folder: folderName,
+            opened_at: new Date().toISOString()
+        };
+        
+        // Supprimer la note si elle existe déjà dans l'historique
+        recentNotes = recentNotes.filter(note => note.id !== noteId);
+        
+        // Ajouter la note au début de la liste
+        recentNotes.unshift(noteData);
+        
+        // Garder seulement les 6 dernières notes
+        recentNotes = recentNotes.slice(0, 6);
+        
+        // Sauvegarder dans le localStorage
+        localStorage.setItem('recent_notes_history', JSON.stringify(recentNotes));
+        
+        console.log('📝 Note ajoutée à l\'historique depuis l\'éditeur:', noteTitle);
+    } catch (error) {
+        console.error('❌ Erreur lors de l\'ajout à l\'historique:', error);
+    }
+}
+
+// Configurer les écouteurs d'événements
+function setupEventListeners() {
+    // Police
+    document.getElementById('fontFamily').addEventListener('change', function() {
+        document.execCommand('fontName', false, this.value);
+    });
+    
+    // Taille de police
+    document.getElementById('fontSize').addEventListener('change', function() {
+        const size = this.value + 'pt';
+        document.execCommand('fontSize', false, '7');
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const span = document.createElement('span');
+            span.style.fontSize = size;
+            range.surroundContents(span);
+        }
+    });
+    
+    // Styles de texte
+    document.getElementById('boldBtn').addEventListener('click', function() {
+        document.execCommand('bold', false, null);
+        this.classList.toggle('btn-active');
+    });
+    
+    document.getElementById('italicBtn').addEventListener('click', function() {
+        document.execCommand('italic', false, null);
+        this.classList.toggle('btn-active');
+    });
+    
+    document.getElementById('underlineBtn').addEventListener('click', function() {
+        document.execCommand('underline', false, null);
+        this.classList.toggle('btn-active');
+    });
+    
+    // Couleurs
+    document.getElementById('textColor').addEventListener('change', function() {
+        document.execCommand('foreColor', false, this.value);
+    });
+    
+    document.getElementById('bgColor').addEventListener('change', function() {
+        document.execCommand('hiliteColor', false, this.value);
+    });
+    
+    // Alignement
+    document.getElementById('alignLeft').addEventListener('click', function() {
+        document.execCommand('justifyLeft', false, null);
+        updateAlignmentButtons('left');
+    });
+    
+    document.getElementById('alignCenter').addEventListener('click', function() {
+        document.execCommand('justifyCenter', false, null);
+        updateAlignmentButtons('center');
+    });
+    
+    document.getElementById('alignRight').addEventListener('click', function() {
+        document.execCommand('justifyRight', false, null);
+        updateAlignmentButtons('right');
+    });
+    
+    // Nouveaux boutons : Formes et flèches
+    document.getElementById('shapeBtn').addEventListener('click', function() {
+        togglePanel('shapesPanel');
+        closeOtherPanels('shapesPanel');
+    });
+    
+    document.getElementById('arrowBtn').addEventListener('click', function() {
+        togglePanel('arrowsPanel');
+        closeOtherPanels('arrowsPanel');
+    });
+    
+    document.getElementById('lineBtn').addEventListener('click', function() {
+        insertLine();
+    });
+    
+    // Images et médias
+    document.getElementById('imageBtn').addEventListener('click', function() {
+        insertImage();
+    });
+    
+    document.getElementById('drawBtn').addEventListener('click', function() {
+        alert('Fonction de dessin à venir !');
+    });
+    
+    // Stickers et émojis
+    document.getElementById('stickerBtn').addEventListener('click', function() {
+        togglePanel('stickersPanel');
+        closeOtherPanels('stickersPanel');
+        showStickerCategory('notes'); // Catégorie par défaut
+    });
+    
+    document.getElementById('emojiBtn').addEventListener('click', function() {
+        insertEmoji();
+    });
+    
+    // Actions
+    document.getElementById('undoBtn').addEventListener('click', function() {
+        document.execCommand('undo', false, null);
+    });
+    
+    document.getElementById('redoBtn').addEventListener('click', function() {
+        document.execCommand('redo', false, null);
+    });
+    
+    document.getElementById('printBtn').addEventListener('click', function() {
+        window.print();
+    });
+    
+    // Taille de page
+    document.getElementById('pageSize').addEventListener('change', function() {
+        updatePageSize(this.value);
+    });
+    
+    // Orientation de page
+    document.getElementById('pageOrientation').addEventListener('change', function() {
+        updatePageOrientation(this.value);
+    });
+    
+    // Couleurs de page
+    document.getElementById('pageBgColor').addEventListener('change', function() {
+        updatePageColors(this.value, null);
+    });
+    
+    document.getElementById('pageLineColor').addEventListener('change', function() {
+        updatePageColors(null, this.value);
+    });
+    
+    // Sauvegarde
+    document.getElementById('saveBtn').addEventListener('click', saveNote);
+    
+    // Auto-sauvegarde toutes les 30 secondes
+    setInterval(autoSave, 30000);
+    
+    // Raccourcis clavier
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey || e.metaKey) {
+            switch(e.key) {
+                case 's':
+                    e.preventDefault();
+                    saveNote();
+                    break;
+                case 'b':
+                    e.preventDefault();
+                    document.execCommand('bold', false, null);
+                    break;
+                case 'i':
+                    e.preventDefault();
+                    document.execCommand('italic', false, null);
+                    break;
+                case 'u':
+                    e.preventDefault();
+                    document.execCommand('underline', false, null);
+                    break;
+                case 'z':
+                    e.preventDefault();
+                    document.execCommand('undo', false, null);
+                    break;
+                case 'y':
+                    e.preventDefault();
+                    document.execCommand('redo', false, null);
+                    break;
+                case 'p':
+                    e.preventDefault();
+                    window.print();
+                    break;
+            }
+        }
+    });
+    
+    // Mettre à jour l'état des boutons lors de la sélection
+    document.addEventListener('selectionchange', updateButtonStates);
+    
+    // Fermer les panneaux en cliquant ailleurs
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#shapesPanel') && !e.target.closest('#shapeBtn')) {
+            document.getElementById('shapesPanel').classList.add('hidden');
+        }
+        if (!e.target.closest('#arrowsPanel') && !e.target.closest('#arrowBtn')) {
+            document.getElementById('arrowsPanel').classList.add('hidden');
+        }
+        if (!e.target.closest('#stickersPanel') && !e.target.closest('#stickerBtn')) {
+            document.getElementById('stickersPanel').classList.add('hidden');
+        }
+    });
+}
+
+// Mettre à jour la taille de page
+function updatePageSize(size) {
+    const container = document.getElementById('pageContainer');
+    const lines = document.getElementById('pageLines');
+    
+    // Supprimer toutes les classes de taille et d'orientation
+    container.classList.remove('page-a4', 'page-a3', 'page-a5', 'page-letter', 'page-legal', 'page-b4', 'page-b5');
+    
+    // Ajouter la nouvelle classe
+    container.classList.add('page-' + size);
+    
+    // Appliquer l'orientation actuelle
+    const orientation = document.getElementById('pageOrientation').value;
+    if (orientation === 'landscape') {
+        container.classList.add('landscape');
+    }
+    
+    // Ajuster les lignes pour la nouvelle taille
+    updatePageLines(size);
+}
+
+// Mettre à jour l'orientation de la page
+function updatePageOrientation(orientation) {
+    const container = document.getElementById('pageContainer');
+    const currentSize = document.getElementById('pageSize').value;
+    
+    // Supprimer ou ajouter la classe landscape
+    if (orientation === 'landscape') {
+        container.classList.add('landscape');
+    } else {
+        container.classList.remove('landscape');
+    }
+}
+
+// Mettre à jour les couleurs de la page
+function updatePageColors(bgColor, lineColor) {
+    const container = document.getElementById('pageContainer');
+    const lines = document.getElementById('pageLines');
+    
+    if (bgColor) {
+        container.style.backgroundColor = bgColor;
+        document.getElementById('pageBgColor').value = bgColor;
+    }
+    
+    if (lineColor) {
+        const currentSize = document.getElementById('pageSize').value;
+        const lineHeight = getLineHeight(currentSize);
+        lines.style.backgroundImage = `repeating-linear-gradient(to bottom, transparent, transparent ${lineHeight}, ${lineColor} ${lineHeight}, ${lineColor} ${parseInt(lineHeight) + 1}px)`;
+        document.getElementById('pageLineColor').value = lineColor;
+    }
+}
+
+// Obtenir la hauteur de ligne pour un format donné
+function getLineHeight(size) {
+    switch(size) {
+        case 'a3': return '30px';
+        case 'a5': return '20px';
+        case 'b4': return '28px';
+        case 'b5': return '22px';
+        case 'letter':
+        case 'legal': return '24px';
+        default: return '25px';
+    }
+}
+
+// Mettre à jour les lignes de la page
+function updatePageLines(size) {
+    const lines = document.getElementById('pageLines');
+    const lineHeight = getLineHeight(size);
+    const lineColor = document.getElementById('pageLineColor').value;
+    
+    lines.style.backgroundImage = `repeating-linear-gradient(to bottom, transparent, transparent ${lineHeight}, ${lineColor} ${lineHeight}, ${lineColor} ${parseInt(lineHeight) + 1}px)`;
+}
+
+// Mettre à jour les boutons d'alignement
+function updateAlignmentButtons(alignment) {
+    document.querySelectorAll('[id^="align"]').forEach(btn => {
+        btn.classList.remove('btn-active');
+    });
+    document.getElementById('align' + alignment.charAt(0).toUpperCase() + alignment.slice(1)).classList.add('btn-active');
+    currentAlignment = alignment;
+}
+
+// Sauvegarder la note
+function saveNote() {
+    const saveBtn = document.getElementById('saveBtn');
+    saveBtn.classList.add('saving');
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Enregistrement...';
+    
+    noteData.title = document.getElementById('noteTitle').textContent;
+    noteData.content = document.getElementById('noteContent').innerHTML;
+    noteData.updated_at = new Date().toISOString();
+    
+    // Vérifier si c'est une nouvelle note avec des données temporaires
+    const tempNoteData = sessionStorage.getItem('temp_note_data');
+    if (tempNoteData && !noteData.id) {
+        const tempNote = JSON.parse(tempNoteData);
+        // S'assurer que le dossier est bien celui des données temporaires
+        noteData.folder = tempNote.folder || 'general';
+        console.log('📂 Sauvegarde de la note dans le dossier:', noteData.folder);
+    }
+    
+    fetch('/api/notes/save', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(noteData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            noteData.id = data.note_id;
+            
+            // Nettoyer les données temporaires après la première sauvegarde réussie
+            if (tempNoteData) {
+                sessionStorage.removeItem('temp_note_data');
+                console.log('🗑️ Données temporaires nettoyées après sauvegarde');
+            }
+            
+            saveBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Enregistré !';
+            setTimeout(() => {
+                saveBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Enregistrer';
+                saveBtn.classList.remove('saving');
+            }, 2000);
+        } else {
+            throw new Error(data.message || 'Erreur lors de la sauvegarde');
+        }
+    })
+    .catch(error => {
+        console.error('Erreur lors de la sauvegarde:', error);
+        saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>Erreur';
+        setTimeout(() => {
+            saveBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Enregistrer';
+            saveBtn.classList.remove('saving');
+        }, 2000);
+    });
+}
+
+// Auto-sauvegarde
+function autoSave() {
+    if (noteData.title || document.getElementById('noteContent').textContent.trim()) {
+        saveNote();
+    }
+}
+
+// Mettre à jour l'état des boutons en fonction de la sélection
+function updateButtonStates() {
+    const buttons = [
+        { id: 'boldBtn', command: 'bold' },
+        { id: 'italicBtn', command: 'italic' },
+        { id: 'underlineBtn', command: 'underline' }
+    ];
+    
+    buttons.forEach(btn => {
+        const element = document.getElementById(btn.id);
+        if (element) {
+            try {
+                const isActive = document.queryCommandState(btn.command);
+                if (isActive) {
+                    element.classList.add('btn-active');
+                } else {
+                    element.classList.remove('btn-active');
+                }
+            } catch (e) {
+                // Ignorer les erreurs pour les commandes non supportées
+            }
+        }
+    });
+}
+
+// ========================================
+// FONCTIONS POUR LES FORMES ET FLÈCHES
+// ========================================
+
+// Basculer l'affichage des panneaux
+function togglePanel(panelId) {
+    const panel = document.getElementById(panelId);
+    panel.classList.toggle('hidden');
+}
+
+// Fermer les autres panneaux
+function closeOtherPanels(exceptPanel) {
+    const panels = ['shapesPanel', 'arrowsPanel', 'stickersPanel'];
+    panels.forEach(panelId => {
+        if (panelId !== exceptPanel) {
+            document.getElementById(panelId).classList.add('hidden');
+        }
+    });
+}
+
+// Insérer une forme
+function insertShape(shapeType) {
+    const editor = document.getElementById('noteContent');
+    const shape = document.createElement('div');
+    shape.style.display = 'inline-block';
+    shape.style.margin = '0 5px';
+    shape.style.verticalAlign = 'middle';
+    
+    switch(shapeType) {
+        case 'rectangle':
+            shape.innerHTML = '<div style="width: 60px; height: 40px; border: 2px solid #333;"></div>';
+            break;
+        case 'circle':
+            shape.innerHTML = '<div style="width: 40px; height: 40px; border: 2px solid #333; border-radius: 50%;"></div>';
+            break;
+        case 'triangle':
+            shape.innerHTML = '<div style="width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-bottom: 35px solid #333;"></div>';
+            break;
+        case 'star':
+            shape.innerHTML = '<i class="fas fa-star" style="font-size: 30px; color: #333;"></i>';
+            break;
+        case 'heart':
+            shape.innerHTML = '<i class="fas fa-heart" style="font-size: 28px; color: #e74c3c;"></i>';
+            break;
+        case 'diamond':
+            shape.innerHTML = '<div style="width: 30px; height: 30px; border: 2px solid #333; transform: rotate(45deg); margin: 15px;"></div>';
+            break;
+    }
+    
+    // Insérer à la position du curseur
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        range.insertNode(shape);
+    } else {
+        editor.appendChild(shape);
+    }
+    
+    // Fermer le panneau
+    document.getElementById('shapesPanel').classList.add('hidden');
+}
+
+// Insérer une flèche
+function insertArrow(arrowType) {
+    const editor = document.getElementById('noteContent');
+    const arrow = document.createElement('span');
+    arrow.style.display = 'inline-block';
+    arrow.style.margin = '0 5px';
+    arrow.style.fontSize = '24px';
+    arrow.style.color = '#333';
+    
+    switch(arrowType) {
+        case 'right':
+            arrow.innerHTML = '→';
+            break;
+        case 'left':
+            arrow.innerHTML = '←';
+            break;
+        case 'up':
+            arrow.innerHTML = '↑';
+            break;
+        case 'down':
+            arrow.innerHTML = '↓';
+            break;
+        case 'up-right':
+            arrow.innerHTML = '↗';
+            break;
+        case 'double':
+            arrow.innerHTML = '↔';
+            break;
+    }
+    
+    // Insérer à la position du curseur
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        range.insertNode(arrow);
+    } else {
+        editor.appendChild(arrow);
+    }
+    
+    // Fermer le panneau
+    document.getElementById('arrowsPanel').classList.add('hidden');
+}
+
+// Insérer une ligne
+function insertLine() {
+    const editor = document.getElementById('noteContent');
+    const line = document.createElement('hr');
+    line.style.margin = '10px 0';
+    line.style.border = '1px solid #333';
+    line.style.width = '100%';
+    
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        range.insertNode(line);
+    } else {
+        editor.appendChild(line);
+    }
+}
+
+// ========================================
+// FONCTIONS POUR LES IMAGES
+// ========================================
+
+function insertImage() {
+    const url = prompt('Entrez l\'URL de l\'image :', 'https://');
+    if (url) {
+        const editor = document.getElementById('noteContent');
+        const img = document.createElement('img');
+        img.src = url;
+        img.style.maxWidth = '300px';
+        img.style.height = 'auto';
+        img.style.margin = '10px';
+        img.style.borderRadius = '4px';
+        img.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+        
+        // Gérer les erreurs de chargement
+        img.onerror = function() {
+            alert('Erreur lors du chargement de l\'image. Vérifiez l\'URL.');
+        };
+        
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            range.insertNode(img);
+        } else {
+            editor.appendChild(img);
+        }
+    }
+}
+
+// ========================================
+// FONCTIONS POUR LES STICKERS
+// ========================================
+
+const stickers = {
+    emotions: ['😀', '😃', '😄', '😁', '😂', '🤣', '😊', '😇', '🙂', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😜', '🤪', '😝', '🤗', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😴', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤡'],
+    animals: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🐮', '🐥', '🐸', '🐽', '🐾', '🐵', '🙀', '🙈', '🙉', '🦄', '🦅', '🦆', '🦇', '🦈', '🦉', '🦊', '🦋', '🦌', '🦍', '🦎', '🦏', '🦐', '🦑', '🦒', '🦓', '🦔', '🦕', '🦖', '🦗', '🦘', '🦙', '🦚', '🦛', '🦜', '🦝', '🦞', '🦟', '🦠', '🦡', '🦢', '🦣', '🦤', '🦥', '🐀', '🐁', '🐂', '🐃', '🐄', '🐅', '🐆', '🐇', '🐈', '🐉', '🐊', '🐋', '🐌', '🐍', '🐎', '🐏', '🐐', '🐑', '🐒', '🐓', '🐔', '🐕', '🐖', '🐗'],
+    food: ['🍎', '🍏', '🍐', '🍑', '🍒', '🍓', '🍔', '🍕', '🍖', '🍗', '🍘', '🍙', '🍚', '🍛', '🍜', '🍝', '🍞', '🍟', '🍠', '🍡', '🍢', '🍣', '🍤', '🍥', '🍦', '🍧', '🍨', '🍩', '🍪', '🍫', '🍬', '🍭', '🍮', '🍯', '🍰', '🍱', '🍲', '🍳', '🍴', '🍵', '🍶', '🍷', '🍸', '🍹', '🍺', '🍻', '🍼', '🍽', '🍾', '🍿', '🎀', '🎁', '🎂', '🎃', '🎄', '🎅', '🎆', '🎇', '🎈', '🎉', '🎊', '🎋', '🎌', '🎍', '🎎', '🎏', '🎐', '🎑', '🎒', '🎓', '🎔', '🎕', '🎖', '🎗', '🎘', '🎙', '🎚', '🎛', '🎜', '🎝'],
+    objects: ['⌚', '📱', '📲', '💻', '⌨️', '🖥️', '🖨', '🖱', '🖲', '🖳', '🖴', '🖵', '🖶', '🖷', '🖸', '🖹', '🖺', '🖻', '🖼', '🖽', '🖾', '🖿', '🗀', '🗁', '🗂', '🗃', '🗄', '🗅', '🗆', '🗇', '🗈', '🗉', '🗊', '🗋', '🗌', '🗍', '🗎', '🗏', '🗐', '🗑', '🗒', '🗓', '🗔', '🗕', '🗖', '🗗', '🗘', '🗙', '🗚', '🗛', '🗜', '🗝', '🗞', '🗟', '🗠', '🗡', '🗢', '🗣', '🗤', '🗥', '🗦', '🗧', '🗨', '🗩', '🗪', '🗫', '🗬', '🗭', '🗮', '🗯', '🗰', '🗱', '🗲', '🗳', '🗴', '🗵', '🗶', '🗷', '🗸', '🗹', '🗺', '🗻', '🗼', '🗽', '🗾', '🗿'],
+    celebration: ['🎉', '🎊', '🎋', '🎌', '🎍', '🎎', '🎏', '🎐', '🎑', '🎒', '🎓', '🎔', '🎕', '🎖', '🎗', '🎘', '🎙', '🎚', '🎛', '🎜', '🎝', '🎞', '🎟', '🎠', '🎡', '🎢', '🎣', '🎤', '🎥', '🎦', '🎧', '🎨', '🎩', '🎪', '🎫', '🎬', '🎭', '🎮', '🎯', '🎰', '🎱', '🎲', '🎳', '🎴', '🎵', '🎶', '🎷', '🎸', '🎹', '🎺', '🎻', '🎼', '🎽', '🎾', '🎿', '🏀', '🏁', '🏂', '🏃', '🏄', '🏅', '🏆', '🏇', '🏈', '🏉', '🏊', '🏋', '🏌', '🏍', '🏎', '🏏', '🏐', '🏑', '🏒', '🏓', '🏔', '🏕', '🏖', '🏗', '🏘', '🏙', '🏚', '🏛', '🏜', '🏝', '🏞', '🏟', '🏠', '🏡', '🏢', '🏣', '🏤', '🏥', '🏦', '🏧', '🏨', '🏩', '🏪', '🏫', '🏬', '🏭', '🏮', '🏯', '🏰', '🏱'],
+    notes: ['📝', '📌', '📎', '🗒️', '📋', '📄', '📃', '📑', '📒', '📔', '📕', '📗', '📘', '📙', '📚', '📓', '📜', '📖', '📰', '🗞️', '📧', '📨', '📩', '📤', '📥', '📦', '📫', '📪', '📬', '📭', '📮', '📯', '📱', '📲', '📳', '📴', '📵', '📶', '📷', '📸', '📹', '📼', '📹', '📽️', '🎥', '📺', '📻', '🎚️', '🎛️', '🧭', '⏱️', '⏲️', '⏰', '⌚', '⏳', '⌛', '📈', '📉', '📊', '🎯', '🔍', '🔎', '🔬', '🔭', '📡', '🛰️', '🗺️', '🗿', '🗽', '🗼', '🗾']
+};
+
+// Afficher une catégorie de stickers
+function showStickerCategory(category) {
+    const content = document.getElementById('stickerContent');
+    const categoryStickers = stickers[category] || [];
+    
+    // Mettre à jour les boutons de catégorie
+    document.querySelectorAll('#stickersPanel .border-b button').forEach(btn => {
+        btn.classList.remove('border-b-2', 'border-blue-500', 'text-blue-600');
+    });
+    event.target.classList.add('border-b-2', 'border-blue-500', 'text-blue-600');
+    
+    // Afficher les stickers
+    content.innerHTML = '';
+    categoryStickers.forEach(sticker => {
+        const stickerBtn = document.createElement('button');
+        stickerBtn.className = 'p-3 text-2xl hover:bg-gray-100 rounded transition-all duration-200 hover:scale-110';
+        stickerBtn.textContent = sticker;
+        stickerBtn.onclick = function() {
+            insertSticker(sticker);
+        };
+        content.appendChild(stickerBtn);
+    });
+}
+
+// Insérer un sticker
+function insertSticker(sticker) {
+    const editor = document.getElementById('noteContent');
+    const stickerSpan = document.createElement('span');
+    stickerSpan.textContent = sticker;
+    stickerSpan.style.fontSize = '24px';
+    stickerSpan.style.margin = '0 2px';
+    stickerSpan.style.verticalAlign = 'middle';
+    
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        range.insertNode(stickerSpan);
+    } else {
+        editor.appendChild(stickerSpan);
+    }
+    
+    // Fermer le panneau
+    document.getElementById('stickersPanel').classList.add('hidden');
+}
+
+// Insérer un émoji rapide
+function insertEmoji() {
+    const commonEmojis = ['😀', '😂', '❤️', '👍', '🎉', '🔥', '💯', '✨', '🎯', '💪'];
+    const emoji = prompt('Choisissez un émoji :\n' + commonEmojis.join(' '));
+    if (emoji && commonEmojis.includes(emoji)) {
+        insertSticker(emoji);
+    } else if (emoji) {
+        insertSticker(emoji);
+    }
+}
+</script>
+{% endblock %}

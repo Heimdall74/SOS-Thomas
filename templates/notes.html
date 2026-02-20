@@ -1,0 +1,2763 @@
+{% extends "base.html" %}
+
+{% block title %}Notes - SOS Thomas{% endblock %}
+
+{% block content %}
+<style>
+/* Styles pour l'image de fond */
+.background-page {
+    position: fixed;
+    top: 80px; /* Espace pour le header supérieur */
+    left: 280px; /* Espace pour la sidebar gauche */
+    right: 0;
+    bottom: 0;
+    z-index: -1;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* Aperçu avec les dimensions exactes de la page centré par rapport aux bandeaux */
+.preview-container {
+    position: relative;
+    width: 100%;
+    height: 120px; /* Approximation de la hauteur de la page */
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    margin: 0 auto;
+}
+
+.preview-container img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Effet de slide décalé quand le bandeau est ouvert - uniquement pour le contenu de la page notes */
+.notes-content {
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.personalization-open .notes-content {
+    transform: translateX(-160px); /* Se décale vers la gauche de la moitié du bandeau */
+}
+</style>
+<div class="flex h-screen">
+    <!-- Contenu principal -->
+    <div class="main-content notes-content flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="text-3xl font-bold text-gray-800">Bloc notes</h2>
+            <div class="flex gap-2">
+                <button onclick="manualSave()" class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600">
+                    <i class="fas fa-save mr-2"></i>Sauvegarder
+                </button>
+                <button onclick="createNewFolder()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                    <i class="fas fa-folder-plus mr-2"></i>Nouveau dossier
+                </button>
+                <a href="{{ url_for('note_editor') }}" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">
+                    <i class="fas fa-plus mr-2"></i>Nouvelle note
+                </a>
+                <button class="bg-white text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100 border border-gray-300 shadow-sm" onclick="openPersonalizationMenu()">
+                    <div class="flex items-center space-x-1">
+                        <div class="w-1 h-1 bg-gray-400 rounded-full"></div>
+                        <div class="w-1 h-1 bg-gray-400 rounded-full"></div>
+                        <div class="w-1 h-1 bg-gray-400 rounded-full"></div>
+                    </div>
+                </button>
+                <a href="{{ url_for('dashboard') }}" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+                    <i class="fas fa-arrow-left mr-2"></i>Retour
+                </a>
+            </div>
+        </div>
+    
+    <div class="bg-white rounded-xl shadow-md p-6">
+        <!-- Dossiers de notes en style widgets -->
+        <div id="notesFolders" class="mb-6">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+                <!-- Dossier par défaut -->
+                <div class="group relative">
+                    <div class="folder-widget bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 hover:border-blue-300 transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:scale-105 rounded-2xl" data-folder="general" data-color='{"name":"Bleu","bg":"bg-blue-50","border":"border-blue-200","icon":"text-blue-500","badge":"bg-blue-100 text-blue-800"}'>
+                        <div class="folder-actions-top absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10">
+                            <button onclick="changeFolderColor('general', event)" class="p-1.5 text-purple-500 hover:text-purple-700 bg-white/90 backdrop-blur-sm rounded-lg shadow-md transition-all duration-300 hover:bg-purple-50" title="Changer la couleur">
+                                <i class="fas fa-palette text-sm"></i>
+                            </button>
+                            <button onclick="addNoteToFolder('general', event)" class="p-1.5 text-green-500 hover:text-green-700 bg-white/90 backdrop-blur-sm rounded-lg shadow-md transition-all duration-300 hover:bg-green-50" title="Ajouter une note">
+                                <i class="fas fa-plus text-sm"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="folder-widget-content cursor-pointer p-2" onclick="toggleFolder('general')">
+                            <div class="text-center">
+                                <div class="relative inline-block mb-1">
+                                    <i class="fas fa-folder text-blue-500 text-3xl transform transition-transform duration-300 group-hover:scale-110 folder-icon"></i>
+                                    <span class="absolute -top-1 -right-1 bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full text-xs font-semibold shadow-lg folder-count">0</span>
+                                </div>
+                                <h3 class="text-xs font-bold text-gray-800 mb-0.5">Général</h3>
+                                <p class="text-xs text-gray-500">Dossier principal</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Effet de brillance au hover -->
+                    <div class="absolute inset-0 bg-gradient-to-t from-blue-500/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                </div>
+            </div>
+            
+            <!-- Contenu du dossier général (caché par défaut) -->
+            <div id="folder-general" class="folder-content hidden mt-6">
+                <div class="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl shadow-xl border border-gray-200 p-8">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                                <i class="fas fa-folder text-white text-xl"></i>
+                            </div>
+                            <h4 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                                Notes du dossier Général
+                            </h4>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="addNoteToFolder('general', event)" class="p-3 text-green-500 hover:text-green-700 bg-white/80 backdrop-blur-sm rounded-xl transition-all duration-300 hover:bg-green-50" title="Ajouter une note">
+                                <i class="fas fa-plus text-xl"></i>
+                            </button>
+                            <button onclick="toggleFolder('general')" class="p-3 text-gray-500 hover:text-gray-700 bg-white/80 backdrop-blur-sm rounded-xl transition-all duration-300 hover:bg-gray-100">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="col-span-full text-center py-16">
+                            <div class="inline-flex items-center space-x-4 text-gray-400">
+                                <i class="fas fa-folder-open text-4xl"></i>
+                                <div class="text-left">
+                                    <p class="text-lg font-medium text-gray-600 mb-2">Aucune note dans ce dossier</p>
+                                    <p class="text-sm text-gray-500">Commencez par ajouter votre première note !</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Widget de création de note rapide et historique -->
+        <div class="border-t pt-6">
+            <div class="grid grid-cols-1 md:grid-cols-10 gap-6">
+                <!-- Section Note rapide (réduite à 30%) -->
+                <div class="md:col-span-3">
+                    <h3 class="text-lg font-semibold mb-4">Créer une note</h3>
+                    <div class="grid grid-cols-1 gap-4">
+                        <div onclick="openNoteModal()" class="note-widget cursor-pointer hover:scale-105 transition-transform">
+                            <div class="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-dashed border-green-300 rounded-xl p-8 text-center hover:border-green-400 hover:shadow-lg transition-all aspect-[3/2] flex flex-col justify-center">
+                                <div class="mb-4">
+                                    <i class="fas fa-plus-circle text-green-500 text-5xl"></i>
+                                </div>
+                                <h3 class="text-base font-semibold text-gray-700">Nouvelle note</h3>
+                                <p class="text-sm text-gray-500 mt-2">Cliquer pour créer</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Section Historique des notes récentes (étendue à 70%) -->
+                <div class="md:col-span-7">
+                    <h3 class="text-lg font-semibold mb-4 flex items-center">
+                        <i class="fas fa-history mr-2 text-blue-500"></i>
+                        Notes récentes
+                    </h3>
+                    <div id="recentNotes" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <!-- Les notes récentes seront chargées ici par JavaScript -->
+                        <div class="col-span-full text-center py-8 text-gray-400">
+                            <i class="fas fa-clock text-3xl mb-2"></i>
+                            <p class="text-sm">Aucune note récente</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+    
+    <!-- Bandeau de personnalisation (caché par défaut) -->
+    <div id="personalizationPanel" class="fixed right-0 top-20 h-[calc(100vh-5rem)] w-80 bg-white border-l border-gray-200 shadow-xl transform translate-x-full transition-transform duration-300 ease-in-out z-50">
+        <div class="h-full flex flex-col">
+            <!-- En-tête du bandeau -->
+            <div class="p-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-800">Personnalisation de l'arrière plan</h3>
+                    <button onclick="closePersonalizationMenu()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Contenu du bandeau -->
+            <div class="flex-1 p-4 overflow-y-auto">
+                <div class="space-y-4">
+                    <!-- Aperçu de l'image -->
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Aperçu de l'image</label>
+                        <div class="preview-container">
+                            <img id="backgroundPreview" 
+                                 src="/static/uploads/imagebackgroundnote1.jpg" 
+                                 alt="Aperçu de l'arrière-plan" 
+                                 onclick="applyBackgroundWithoutClosing()"
+                                 style="cursor: pointer;"
+                                 onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjEyMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjEyMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjE1MCIgeT0iNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzZiNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+SW1hZ2Ugbm9uIGRpc3BvbmlibGU8L3RleHQ+PC9zdmc+'">
+                            <!-- Indication visuelle de la zone -->
+                            <div class="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                                Zone page
+                            </div>
+                            <!-- Indication que l'image est cliquable -->
+                            <div class="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                                <i class="fas fa-mouse-pointer mr-1"></i>Cliquer pour appliquer
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500">Dimensions: entre les bandeaux</p>
+                        <p class="text-xs text-gray-400">L'aperçu se décale quand le bandeau s'ouvre</p>
+                    </div>
+                    
+                    <!-- Bibliothèque de photos -->
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Bibliothèque de photos</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <!-- Image existante -->
+                            <div class="relative group cursor-pointer" onclick="selectLibraryImage('/static/uploads/imagebackgroundnote1.jpg')">
+                                <img src="/static/uploads/imagebackgroundnote1.jpg" alt="Fond d'écran 1" class="w-full h-20 object-cover rounded-lg border-2 border-gray-200 group-hover:border-blue-400 transition-colors">
+                                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
+                                    <i class="fas fa-check text-white opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1 text-center">Fond 1</p>
+                            </div>
+                            <!-- Nouvelle image fondecran2.jpg -->
+                            <div class="relative group cursor-pointer" onclick="selectLibraryImage('/static/uploads/fondecran2.jpg')">
+                                <img src="/static/uploads/fondecran2.jpg" alt="Fond d'écran 2" class="w-full h-20 object-cover rounded-lg border-2 border-gray-200 group-hover:border-blue-400 transition-colors">
+                                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
+                                    <i class="fas fa-check text-white opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1 text-center">Fond 2</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400">Cliquez sur une image pour la sélectionner</p>
+                    </div>
+                    
+                    <!-- Options -->
+                    <div class="space-y-3">
+                        <button onclick="applySelectedBackground()" class="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                            <i class="fas fa-image mr-2"></i>Appliquer l'image sélectionnée
+                        </button>
+                        
+                        <!-- Option de couleur personnalisée -->
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700">Couleur de fond personnalisée</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="color" id="colorPicker" value="#ffffff" class="h-10 w-full border border-gray-300 rounded cursor-pointer">
+                            </div>
+                        </div>
+                        
+                        <!-- Option de photo personnalisée -->
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700">Photo personnalisée</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="file" id="customImageUpload" accept="image/*" class="hidden" onchange="handleCustomImage(event)">
+                                <button onclick="document.getElementById('customImageUpload').click()" class="flex-1 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors">
+                                    <i class="fas fa-upload mr-2"></i>Téléverser une photo
+                                </button>
+                            </div>
+                            <div id="customImagePreview" class="hidden mt-2">
+                                <img id="customPreviewImg" src="" alt="Aperçu de votre photo" class="w-full h-32 object-cover rounded-lg border border-gray-300">
+                                <div class="flex space-x-2 mt-2">
+                                    <button onclick="applyCustomImage()" class="flex-1 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                                        <i class="fas fa-check mr-1"></i>Appliquer
+                                    </button>
+                                    <button onclick="cancelCustomImage()" class="flex-1 px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                                        <i class="fas fa-times mr-1"></i>Annuler
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button onclick="resetBackground()" class="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
+                            <i class="fas fa-undo mr-2"></i>Revenir à l'arrière-plan blanc
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de création de dossier -->
+<div id="folderModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[150] flex items-center justify-center">
+    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 transform transition-all">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-gray-800">
+                <i class="fas fa-folder-plus mr-2 text-blue-500"></i>
+                Nouveau dossier
+            </h3>
+            <button onclick="closeFolderModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <form id="folderForm" class="space-y-6">
+            <div>
+                <label for="folderName" class="block text-sm font-medium text-gray-700 mb-2">
+                    Nom du dossier
+                </label>
+                <input 
+                    type="text" 
+                    id="folderName" 
+                    name="folderName"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Entrez le nom du dossier..."
+                    required
+                    maxlength="30"
+                >
+                <p class="text-xs text-gray-500 mt-1">Maximum 30 caractères</p>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-3">
+                    Couleur du dossier
+                </label>
+                <div class="grid grid-cols-6 gap-3" id="colorPicker">
+                    <!-- Les options de couleur seront générées par JavaScript -->
+                </div>
+            </div>
+            
+            <div class="flex gap-3 pt-4">
+                <button 
+                    type="button" 
+                    onclick="closeFolderModal()" 
+                    class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                    Annuler
+                </button>
+                <button 
+                    type="submit" 
+                    class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center"
+                >
+                    <i class="fas fa-save mr-2"></i>
+                    Créer le dossier
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal de renommage de dossier -->
+<div id="renameModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[150] flex items-center justify-center">
+    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 transform transition-all">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-gray-800">
+                <i class="fas fa-edit mr-2 text-blue-500"></i>
+                Renommer le dossier
+            </h3>
+            <button onclick="closeRenameModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <form id="renameForm" class="space-y-6">
+            <div>
+                <label for="newFolderName" class="block text-sm font-medium text-gray-700 mb-2">
+                    Nouveau nom du dossier
+                </label>
+                <input 
+                    type="text" 
+                    id="newFolderName" 
+                    name="newFolderName"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Entrez le nouveau nom du dossier..."
+                    required
+                    maxlength="30"
+                >
+                <p class="text-xs text-gray-500 mt-1">Maximum 30 caractères</p>
+            </div>
+            
+            <div class="flex gap-3 pt-4">
+                <button 
+                    type="button" 
+                    onclick="closeRenameModal()" 
+                    class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                    Annuler
+                </button>
+                <button 
+                    type="submit" 
+                    class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center"
+                >
+                    <i class="fas fa-save mr-2"></i>
+                    Renommer
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal de création de note dans un dossier -->
+<div id="folderNoteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[150] flex items-center justify-center">
+    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 transform transition-all">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-gray-800">
+                <i class="fas fa-sticky-note mr-2 text-green-500"></i>
+                Nouvelle note
+            </h3>
+            <button onclick="closeFolderNoteModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <form id="folderNoteForm" class="space-y-6">
+            <div>
+                <label for="folderNoteTitle" class="block text-sm font-medium text-gray-700 mb-2">
+                    Titre de la note
+                </label>
+                <input 
+                    type="text" 
+                    id="folderNoteTitle" 
+                    name="folderNoteTitle"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                    placeholder="Entrez le titre de la note..."
+                    required
+                    maxlength="50"
+                >
+                <p class="text-xs text-gray-500 mt-1">Maximum 50 caractères</p>
+            </div>
+            
+            <div class="flex gap-3 pt-4">
+                <button 
+                    type="button" 
+                    onclick="closeFolderNoteModal()" 
+                    class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                    Annuler
+                </button>
+                <button 
+                    type="submit" 
+                    class="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all flex items-center justify-center"
+                >
+                    <i class="fas fa-arrow-right mr-2"></i>
+                    Valider
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal de confirmation de création de note -->
+<div id="confirmNoteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[150] flex items-center justify-center">
+    <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md mx-4 transform transition-all">
+        <div class="text-center mb-6">
+            <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center border-2 border-green-200">
+                <i class="fas fa-question text-green-500 text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">
+                Voulez-vous poursuivre dans <span id="confirmNoteName" class="text-green-600"></span> ?
+            </h3>
+            <p class="text-gray-600 text-sm">
+                Vous allez être redirigé vers l'éditeur de note pour commencer à écrire
+            </p>
+        </div>
+        
+        <div class="flex gap-3">
+            <button 
+                onclick="cancelNoteCreation()" 
+                class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center"
+            >
+                <i class="fas fa-arrow-left mr-2"></i>
+                Non
+            </button>
+            <button 
+                onclick="confirmNoteCreation()" 
+                class="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all flex items-center justify-center"
+            >
+                <i class="fas fa-check mr-2"></i>
+                Oui, poursuivre
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de changement de couleur -->
+<div id="colorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[150] flex items-center justify-center">
+    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl mx-4 transform transition-all">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-gray-800">
+                <i class="fas fa-palette mr-2 text-purple-500"></i>
+                Changer la couleur du dossier
+            </h3>
+            <button onclick="closeColorModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <div class="mb-4">
+            <p class="text-sm text-gray-600 mb-4">Choisissez une nouvelle couleur pour votre dossier :</p>
+            <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4" id="colorPickerModal">
+                <!-- Les options de couleur seront générées par JavaScript -->
+            </div>
+        </div>
+        
+        <div class="flex gap-3 pt-4">
+            <button 
+                type="button" 
+                onclick="closeColorModal()" 
+                class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+                Annuler
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de création de note -->
+<div id="noteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[150] flex items-center justify-center">
+    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 transform transition-all">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-gray-800">
+                <i class="fas fa-plus-circle mr-2 text-green-500"></i>
+                Nouvelle note
+            </h3>
+            <button onclick="closeNoteModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <form id="noteForm" class="space-y-6">
+            <div>
+                <label for="noteTitle" class="block text-sm font-medium text-gray-700 mb-2">
+                    Titre de la note
+                </label>
+                <input 
+                    type="text" 
+                    id="noteTitle" 
+                    name="noteTitle"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                    placeholder="Entrez le titre de la note..."
+                    required
+                    maxlength="50"
+                >
+                <p class="text-xs text-gray-500 mt-1">Maximum 50 caractères</p>
+            </div>
+            
+            <div>
+                <label for="noteFolder" class="block text-sm font-medium text-gray-700 mb-2">
+                    Dossier de destination
+                </label>
+                <select id="noteFolder" name="noteFolder" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
+                    <option value="general">Général</option>
+                </select>
+            </div>
+            
+            <div class="flex gap-3 pt-4">
+                <button 
+                    type="button" 
+                    onclick="closeNoteModal()" 
+                    class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                    Annuler
+                </button>
+                <button 
+                    type="submit" 
+                    class="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center"
+                >
+                    <i class="fas fa-arrow-right mr-2"></i>
+                    Continuer vers l'éditeur
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.folder-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Styles pour les widgets de dossiers */
+.folder-widget {
+    text-align: center;
+    padding: 1rem;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+/* Styles par défaut si aucune couleur n'est appliquée */
+.folder-widget:not([class*="bg-"]) {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+}
+
+.folder-widget:not([class*="bg-"]) .folder-icon {
+    color: #3b82f6;
+}
+
+.folder-widget:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.folder-widget-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.folder-icon-container {
+    position: relative;
+    display: inline-block;
+}
+
+.folder-widget .folder-icon {
+    font-size: 3rem;
+    transition: all 0.2s ease;
+}
+
+.folder-widget:hover .folder-icon {
+    transform: scale(1.1);
+}
+
+.folder-widget .folder-count {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    min-width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.folder-widget .folder-name {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.2;
+    max-width: 100%;
+}
+
+.folder-actions {
+    position: absolute;
+    bottom: 0.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e5e7eb;
+}
+
+.folder-actions-top {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: white;
+    padding: 0.25rem;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e5e7eb;
+}
+
+.folder-widget:hover .folder-actions-top {
+    opacity: 1;
+}
+
+/* Styles pour le widget de note */
+.note-widget {
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.note-widget:hover {
+    transform: translateY(-2px);
+}
+
+.note-widget .bg-gradient-to-br {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.note-widget .bg-gradient-to-br:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 25px rgba(34, 197, 94, 0.15);
+}
+
+.folder-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.folder-content.hidden {
+    max-height: 0;
+}
+
+.folder-content:not(.hidden) {
+    max-height: 2000px;
+}
+
+.folder-item.collapsed .folder-icon {
+    transform: rotate(-90deg);
+}
+
+.note-card {
+    transition: all 0.2s ease;
+}
+
+.note-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Styles pour la modal */
+#folderModal {
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.2s ease-out;
+}
+
+#folderModal > div {
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+#folderModal .transform {
+    transition: transform 0.2s ease;
+}
+
+#colorPicker > div {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+#colorPicker > div::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.3) 50%, transparent 60%);
+    transform: translateX(-100%);
+    transition: transform 0.6s;
+}
+
+#colorPicker > div:hover::before {
+    transform: translateX(100%);
+}
+
+#colorPicker > div.selected {
+    transform: scale(1.05);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+#folderName:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+#folderName.border-red-500:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+</style>
+
+<script>
+let folderCounter = 1;
+
+// Palette de couleurs pour les dossiers
+const folderColors = [
+    { name: 'Bleu', bg: 'bg-blue-50', border: 'border-blue-200', icon: 'text-blue-500', badge: 'bg-blue-100 text-blue-800' },
+    { name: 'Vert', bg: 'bg-green-50', border: 'border-green-200', icon: 'text-green-500', badge: 'bg-green-100 text-green-800' },
+    { name: 'Orange', bg: 'bg-orange-50', border: 'border-orange-200', icon: 'text-orange-500', badge: 'bg-orange-100 text-orange-800' },
+    { name: 'Violet', bg: 'bg-purple-50', border: 'border-purple-200', icon: 'text-purple-500', badge: 'bg-purple-100 text-purple-800' },
+    { name: 'Rouge', bg: 'bg-red-50', border: 'border-red-200', icon: 'text-red-500', badge: 'bg-red-100 text-red-800' },
+    { name: 'Jaune', bg: 'bg-yellow-50', border: 'border-yellow-200', icon: 'text-yellow-500', badge: 'bg-yellow-100 text-yellow-800' },
+    { name: 'Rose', bg: 'bg-pink-50', border: 'border-pink-200', icon: 'text-pink-500', badge: 'bg-pink-100 text-pink-800' },
+    { name: 'Gris', bg: 'bg-gray-50', border: 'border-gray-200', icon: 'text-gray-500', badge: 'bg-gray-100 text-gray-800' },
+    { name: 'Turquoise', bg: 'bg-cyan-50', border: 'border-cyan-200', icon: 'text-cyan-500', badge: 'bg-cyan-100 text-cyan-800' },
+    { name: 'Marron', bg: 'bg-amber-50', border: 'border-amber-200', icon: 'text-amber-500', badge: 'bg-amber-100 text-amber-800' },
+    { name: 'Indigo', bg: 'bg-indigo-50', border: 'border-indigo-200', icon: 'text-indigo-500', badge: 'bg-indigo-100 text-indigo-800' },
+    { name: 'Emeraude', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: 'text-emerald-500', badge: 'bg-emerald-100 text-emerald-800' },
+    { name: 'Teal', bg: 'bg-teal-50', border: 'border-teal-200', icon: 'text-teal-500', badge: 'bg-teal-100 text-teal-800' },
+    { name: 'Lime', bg: 'bg-lime-50', border: 'border-lime-200', icon: 'text-lime-500', badge: 'bg-lime-100 text-lime-800' },
+    { name: 'Sky', bg: 'bg-sky-50', border: 'border-sky-200', icon: 'text-sky-500', badge: 'bg-sky-100 text-sky-800' },
+    { name: 'Fuchsia', bg: 'bg-fuchsia-50', border: 'border-fuchsia-200', icon: 'text-fuchsia-500', badge: 'bg-fuchsia-100 text-fuchsia-800' }
+];
+
+// Créer un nouveau dossier
+function createNewFolder() {
+    openFolderModal();
+}
+
+// Ouvrir la modal de création de dossier
+function openFolderModal() {
+    const modal = document.getElementById('folderModal');
+    const colorPicker = document.getElementById('colorPicker');
+    const sidebar = document.querySelector('.sidebar');
+    
+    // Générer les options de couleur
+    colorPicker.innerHTML = '';
+    folderColors.forEach((color, index) => {
+        const colorOption = document.createElement('div');
+        colorOption.className = `cursor-pointer p-3 rounded-lg border-2 transition-all ${color.bg} ${color.border} min-h-[80px] flex flex-col justify-center w-fit`;
+        colorOption.innerHTML = `
+            <div class="text-center">
+                <i class="fas fa-folder ${color.icon} text-2xl mb-1"></i>
+                <p class="text-xs font-medium">${color.name}</p>
+            </div>
+        `;
+        colorOption.onclick = () => selectColor(index);
+        colorOption.id = `color-${index}`;
+        colorPicker.appendChild(colorOption);
+    });
+    
+    // Sélectionner la première couleur par défaut
+    selectColor(0);
+    
+    // Réinitialiser le formulaire
+    document.getElementById('folderName').value = '';
+    
+    // Afficher la modal
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    
+    // Ajouter l'effet de flou sur la sidebar
+    if (sidebar) {
+        sidebar.style.backdropFilter = 'blur(4px)';
+        sidebar.style.transition = 'backdrop-filter 0.2s ease-out';
+    }
+    
+    // Focus sur le champ de nom
+    setTimeout(() => {
+        document.getElementById('folderName').focus();
+    }, 100);
+}
+
+// Fermer la modal de création de dossier
+function closeFolderModal() {
+    const modal = document.getElementById('folderModal');
+    const sidebar = document.querySelector('.sidebar');
+    
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    
+    // Retirer l'effet de flou de la sidebar
+    if (sidebar) {
+        sidebar.style.backdropFilter = 'none';
+    }
+}
+
+let selectedColorIndex = 0;
+
+// Sélectionner une couleur
+function selectColor(index) {
+    selectedColorIndex = index;
+    
+    // Mettre à jour l'interface visuelle
+    document.querySelectorAll('#colorPicker > div').forEach((option, i) => {
+        if (i === index) {
+            option.classList.add('selected', 'ring-4', 'ring-blue-500', 'ring-offset-2', 'scale-110');
+        } else {
+            option.classList.remove('selected', 'ring-4', 'ring-blue-500', 'ring-offset-2', 'scale-110');
+        }
+    });
+}
+
+// Créer le dossier après soumission du formulaire
+function createFolder() {
+    const folderName = document.getElementById('folderName').value.trim();
+    
+    if (!folderName) {
+        document.getElementById('folderName').classList.add('border-red-500');
+        document.getElementById('folderName').focus();
+        return;
+    }
+    
+    const selectedColor = folderColors[selectedColorIndex];
+    
+    // Générer un ID unique pour le dossier
+    const folderId = `folder_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Créer le dossier dans l'interface
+    const foldersGrid = document.querySelector('#notesFolders .grid');
+    
+    const newFolder = document.createElement('div');
+    newFolder.className = `folder-widget ${selectedColor.bg} ${selectedColor.border}`;
+    newFolder.setAttribute('data-folder', folderId);
+    newFolder.setAttribute('data-color', JSON.stringify(selectedColor));
+    
+    newFolder.innerHTML = `
+        <div class="folder-actions-top absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10">
+            <button onclick="changeFolderColor('${folderId}', event)" class="p-1.5 text-purple-500 hover:text-purple-700 bg-white/90 backdrop-blur-sm rounded-lg shadow-md transition-all duration-300 hover:bg-purple-50" title="Changer la couleur">
+                <i class="fas fa-palette text-sm"></i>
+            </button>
+            <button onclick="addNoteToFolder('${folderId}', event)" class="p-1.5 text-green-500 hover:text-green-700 bg-white/90 backdrop-blur-sm rounded-lg shadow-md transition-all duration-300 hover:bg-green-50" title="Ajouter une note">
+                <i class="fas fa-plus text-sm"></i>
+            </button>
+            <button onclick="deleteFolder('${folderId}', event)" class="p-1.5 text-red-500 hover:text-red-700 bg-white/90 backdrop-blur-sm rounded-lg shadow-md transition-all duration-300 hover:bg-red-50" title="Supprimer le dossier">
+                <i class="fas fa-trash text-sm"></i>
+            </button>
+        </div>
+        <div class="folder-widget-content cursor-pointer p-2" ondblclick="renameFolder('${folderId}', event)" onclick="toggleFolder('${folderId}')">
+            <div class="text-center">
+                <div class="relative inline-block mb-1">
+                    <i class="fas fa-folder ${selectedColor.icon} text-3xl transform transition-transform duration-300 group-hover:scale-110"></i>
+                    <span class="${selectedColor.badge} px-1.5 py-0.5 rounded-full text-xs font-semibold shadow-lg absolute -top-1 -right-1 folder-count">0</span>
+                </div>
+                <h3 class="folder-name text-xs font-bold text-gray-800 mb-0.5">${folderName}</h3>
+                <p class="text-xs text-gray-500">Dossier personnalisé</p>
+                <p class="text-xs text-gray-400 mt-1">Double-cliquer pour renommer</p>
+            </div>
+        </div>
+    `;
+    
+    // Créer le wrapper avec l'effet de brillance
+    const folderWrapper = document.createElement('div');
+    folderWrapper.className = 'group relative';
+    folderWrapper.appendChild(newFolder);
+    
+    // Ajouter l'effet de brillance
+    const shimmerEffect = document.createElement('div');
+    shimmerEffect.className = 'absolute inset-0 bg-gradient-to-t from-blue-500/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none';
+    folderWrapper.appendChild(shimmerEffect);
+    
+    foldersGrid.appendChild(folderWrapper);
+    
+    // Créer le contenu du dossier (caché par défaut)
+    const folderContent = document.createElement('div');
+    folderContent.id = folderId;
+    folderContent.className = 'folder-content hidden mt-6';
+    folderContent.innerHTML = `
+        <div class="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl shadow-xl border border-gray-200 p-8">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                        <i class="fas fa-folder text-white text-xl"></i>
+                    </div>
+                    <h4 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        Notes du dossier ${folderName}
+                    </h4>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="addNoteToFolder('${folderId}', event)" class="p-3 text-green-500 hover:text-green-700 bg-white/80 backdrop-blur-sm rounded-xl transition-all duration-300 hover:bg-green-50" title="Ajouter une note">
+                        <i class="fas fa-plus text-xl"></i>
+                    </button>
+                    <button onclick="toggleFolder('${folderId}')" class="p-3 text-gray-500 hover:text-gray-700 bg-white/80 backdrop-blur-sm rounded-xl transition-all duration-300 hover:bg-gray-100">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="col-span-full text-center py-16">
+                    <div class="inline-flex items-center space-x-4 text-gray-400">
+                        <i class="fas fa-folder-open text-4xl"></i>
+                        <div class="text-left">
+                            <p class="text-lg font-medium text-gray-600 mb-2">Aucune note dans ce dossier</p>
+                            <p class="text-sm text-gray-500">Commencez par ajouter votre première note !</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('notesFolders').appendChild(folderContent);
+    
+    // Sauvegarder le dossier dans le localStorage
+    saveFolderToStorage(folderId, folderName, selectedColor);
+    
+    // Fermer la modal
+    closeFolderModal();
+    
+    // Ouvrir automatiquement le nouveau dossier
+    setTimeout(() => {
+        toggleFolder(folderId);
+    }, 100);
+    
+    // Mettre à jour le selecteur de dossiers
+    updateFolderSelector();
+    
+    // Afficher un message de succès
+    showNotification('Dossier créé avec succès!', 'success');
+    
+    console.log('📁 Nouveau dossier créé:', folderName, 'avec la couleur:', selectedColor.name);
+}
+
+// Sauvegarder un dossier dans le localStorage
+function saveFolderToStorage(folderId, folderName, color) {
+    const folders = getFoldersFromStorage();
+    const newFolder = {
+        id: folderId,
+        name: folderName,
+        color: color,
+        created_at: new Date().toISOString(),
+        notes: []
+    };
+    folders.push(newFolder);
+    localStorage.setItem('custom_folders', JSON.stringify(folders));
+}
+
+// Récupérer les dossiers depuis le localStorage
+function getFoldersFromStorage() {
+    const stored = localStorage.getItem('custom_folders');
+    return stored ? JSON.parse(stored) : [];
+}
+
+// Charger les dossiers sauvegardés au chargement de la page
+function loadSavedFolders() {
+    const folders = getFoldersFromStorage();
+    const foldersGrid = document.querySelector('#notesFolders .grid');
+    
+    folders.forEach(folder => {
+        const folderElement = document.createElement('div');
+        folderElement.className = `folder-widget ${folder.color.bg} ${folder.color.border}`;
+        folderElement.setAttribute('data-folder', folder.id);
+        folderElement.setAttribute('data-color', JSON.stringify(folder.color));
+        
+        folderElement.innerHTML = `
+        <div class="folder-actions-top absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10">
+            <button onclick="changeFolderColor('${folder.id}', event)" class="p-1.5 text-purple-500 hover:text-purple-700 bg-white/90 backdrop-blur-sm rounded-lg shadow-md transition-all duration-300 hover:bg-purple-50" title="Changer la couleur">
+                <i class="fas fa-palette text-sm"></i>
+            </button>
+            <button onclick="addNoteToFolder('${folder.id}', event)" class="p-1.5 text-green-500 hover:text-green-700 bg-white/90 backdrop-blur-sm rounded-lg shadow-md transition-all duration-300 hover:bg-green-50" title="Ajouter une note">
+                <i class="fas fa-plus text-sm"></i>
+            </button>
+            <button onclick="deleteFolder('${folder.id}', event)" class="p-1.5 text-red-500 hover:text-red-700 bg-white/90 backdrop-blur-sm rounded-lg shadow-md transition-all duration-300 hover:bg-red-50" title="Supprimer le dossier">
+                <i class="fas fa-trash text-sm"></i>
+            </button>
+        </div>
+        <div class="folder-widget-content cursor-pointer p-2" ondblclick="renameFolder('${folder.id}', event)" onclick="toggleFolder('${folder.id}')">
+            <div class="text-center">
+                <div class="relative inline-block mb-1">
+                    <i class="fas fa-folder ${folder.color.icon} text-3xl transform transition-transform duration-300 group-hover:scale-110 folder-icon"></i>
+                    <span class="${folder.color.badge} px-1.5 py-0.5 rounded-full text-xs font-semibold shadow-lg absolute -top-1 -right-1 folder-count">${folder.notes ? folder.notes.length : 0}</span>
+                </div>
+                <h3 class="folder-name text-xs font-bold text-gray-800 mb-0.5">${folder.name}</h3>
+                <p class="text-xs text-gray-500">Dossier personnalisé</p>
+                <p class="text-xs text-gray-400 mt-1">Double-cliquer pour renommer</p>
+            </div>
+        </div>
+    `;
+    
+    // Créer le wrapper avec l'effet de brillance
+    const folderWrapper = document.createElement('div');
+    folderWrapper.className = 'group relative';
+    folderWrapper.appendChild(folderElement);
+    
+    // Ajouter l'effet de brillance
+    const shimmerEffect = document.createElement('div');
+    shimmerEffect.className = 'absolute inset-0 bg-gradient-to-t from-blue-500/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none';
+    folderWrapper.appendChild(shimmerEffect);
+    
+    foldersGrid.appendChild(folderWrapper);
+        
+        // Créer le contenu du dossier avec les notes sauvegardées
+        const folderContent = document.createElement('div');
+        folderContent.id = folder.id;
+        folderContent.className = 'folder-content hidden mt-6';
+        
+        const notesHtml = folder.notes && folder.notes.length > 0 ? 
+            folder.notes.map(note => `
+                <div class="bg-white p-4 rounded-lg note-card border border-gray-200" data-note-id="${note.id}">
+                    <h4 class="font-semibold text-gray-800 mb-2">${note.title}</h4>
+                    <p class="text-sm text-gray-600 mb-3">${note.content.substring(0, 100)}${note.content.length > 100 ? '...' : ''}</p>
+                    <div class="flex justify-between items-center">
+                        <div class="flex gap-2">
+                            <button onclick="editNote('${note.id}')" class="text-blue-500 hover:text-blue-700">
+                                <i class="fas fa-edit mr-1"></i>Éditer
+                            </button>
+                            <button onclick="alert('${note.content.replace(/'/g, "\\'")}')" class="text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-eye mr-1"></i>Voir
+                            </button>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs text-gray-500">${note.created_at ? new Date(note.created_at).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                            <button onclick="deleteNoteFromFolder('${folder.id}', '${note.id}')" class="text-red-500 hover:text-red-700">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('') :
+            '<div class="col-span-full text-center py-8"><p class="text-gray-500">Aucune note dans ce dossier</p></div>';
+        
+        folderContent.innerHTML = `
+            <div class="bg-gray-50 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="font-semibold text-gray-800">
+                        <i class="fas fa-folder ${folder.color.icon} mr-2"></i>
+                        Notes du dossier ${folder.name}
+                    </h4>
+                    <button onclick="toggleFolder('${folder.id}')" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    ${notesHtml}
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('notesFolders').appendChild(folderContent);
+    });
+}
+
+// Supprimer un dossier du localStorage
+function deleteFolderFromStorage(folderId) {
+    let folders = getFoldersFromStorage();
+    folders = folders.filter(f => f.id !== folderId);
+    localStorage.setItem('custom_folders', JSON.stringify(folders));
+}
+
+// Fonction pour afficher des notifications
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300 translate-x-full`;
+    
+    // Définir les couleurs en fonction du type
+    const colors = {
+        success: 'bg-green-500 text-white',
+        error: 'bg-red-500 text-white',
+        info: 'bg-blue-500 text-white',
+        warning: 'bg-yellow-500 text-white'
+    };
+    
+    notification.className += ` ${colors[type] || colors.info}`;
+    notification.innerHTML = `
+        <div class="flex items-center">
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} mr-2"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Animation d'entrée
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full');
+        notification.classList.add('translate-x-0');
+    }, 100);
+    
+    // Disparition après 3 secondes
+    setTimeout(() => {
+        notification.classList.add('translate-x-full');
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, 3000);
+}
+
+// Basculer l'affichage du contenu du dossier (nouvelle version)
+function toggleFolder(folderId) {
+    // Fermer tous les autres dossiers
+    document.querySelectorAll('.folder-content').forEach(content => {
+        if (content.id !== folderId) {
+            content.classList.add('hidden');
+            content.style.maxHeight = '0';
+        }
+    });
+    
+    const folder = document.querySelector(`[data-folder="${folderId}"]`);
+    const folderContent = document.getElementById(folderId);
+    const folderIcon = folder.querySelector('.folder-icon');
+    const folderColor = JSON.parse(folder.getAttribute('data-color'));
+    
+    if (folderContent.classList.contains('hidden')) {
+        // Ouvrir le dossier et charger les notes
+        folderContent.classList.remove('hidden');
+        folderContent.style.maxHeight = '2000px';
+        folderIcon.className = `fas fa-folder-open ${folderColor.icon} folder-icon`;
+        folder.classList.remove('collapsed');
+        
+        // Charger les notes du dossier
+        loadFolderNotes(folderId);
+    } else {
+        // Fermer le dossier
+        folderContent.classList.add('hidden');
+        folderContent.style.maxHeight = '0';
+        folderIcon.className = `fas fa-folder ${folderColor.icon} folder-icon`;
+        folder.classList.add('collapsed');
+    }
+}
+
+// Charger les notes d'un dossier dans la vue détaillée
+function loadFolderNotes(folderId) {
+    try {
+        // Charger les notes depuis le serveur
+        fetch('/api/notes_data')
+            .then(response => response.json())
+            .then(data => {
+                if (data.notes) {
+                    // Filtrer les notes pour ce dossier
+                    const folderNotes = data.notes.filter(note => 
+                        (note.folder || 'general') === folderId
+                    );
+                    
+                    // Mettre à jour l'affichage des notes
+                    displayFolderNotes(folderId, folderNotes);
+                }
+            })
+            .catch(error => {
+                console.error('❌ Erreur lors du chargement des notes du dossier:', error);
+            });
+    } catch (error) {
+        console.error('❌ Erreur lors du chargement des notes du dossier:', error);
+    }
+}
+
+// Afficher les notes du dossier dans une grille
+function displayFolderNotes(folderId, notes) {
+    const folderContent = document.getElementById(folderId);
+    if (!folderContent) return;
+    
+    // Obtenir les informations du dossier
+    const folder = document.querySelector(`[data-folder="${folderId}"]`);
+    const folderName = folder.querySelector('.folder-name').textContent;
+    const folderColor = getFolderColor(folderId);
+    
+    // Trouver et mettre à jour la grille de notes existante
+    const notesGrid = folderContent.querySelector('.grid');
+    if (!notesGrid) return;
+    
+    // Créer le contenu HTML pour la grille
+    if (notes.length === 0) {
+        notesGrid.innerHTML = `
+            <div class="col-span-full flex flex-col items-center justify-center py-16 text-gray-400">
+                <i class="fas fa-folder-open text-6xl mb-4"></i>
+                <h3 class="text-xl font-medium text-gray-600 mb-2">Aucune note dans ce dossier</h3>
+                <p class="text-gray-500 mb-6">Commencez par ajouter votre première note !</p>
+                <button onclick="addNoteToFolder('${folderId}', event)" class="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                    <i class="fas fa-plus mr-2"></i>
+                    Créer une note
+                </button>
+            </div>
+        `;
+    } else {
+        notesGrid.innerHTML = notes.map(note => `
+            <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-gray-200 hover:border-blue-300 cursor-pointer group note-card" onclick="openNoteFromFolder('${note.id}')">
+                <div class="p-6">
+                    <div class="flex items-start justify-between mb-3">
+                        <span class="inline-block px-2 py-1 text-xs rounded-full ${folderColor.badge}">
+                            ${folderName}
+                        </span>
+                        <div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="editNoteFromFolder('${note.id}', event)" class="p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded" title="Éditer">
+                                <i class="fas fa-edit text-sm"></i>
+                            </button>
+                            <button onclick="deleteNoteFromFolder('${note.id}', event)" class="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded" title="Supprimer">
+                                <i class="fas fa-trash text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <h3 class="font-semibold text-gray-800 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">
+                        ${note.title}
+                    </h3>
+                    <p class="text-sm text-gray-600 mb-3 line-clamp-3">
+                        ${note.content ? note.content.replace(/<[^>]*>/g, '').substring(0, 100) + (note.content.length > 100 ? '...' : '') : 'Aucun contenu'}
+                    </p>
+                    <div class="flex items-center justify-between text-xs text-gray-500">
+                        <span>
+                            <i class="far fa-calendar mr-1"></i>
+                            ${new Date(note.created_at).toLocaleDateString('fr-FR')}
+                        </span>
+                        <span>
+                            <i class="far fa-clock mr-1"></i>
+                            ${new Date(note.updated_at || note.created_at).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+// Ouvrir une note depuis la vue dossier
+function openNoteFromFolder(noteId) {
+    // Ajouter à l'historique
+    addToRecentHistory(noteId, 'Note depuis dossier', 'general');
+    
+    // Rediriger vers l'éditeur
+    window.location.href = `{{ url_for('note_editor') }}?note_id=${noteId}`;
+}
+
+// Éditer une note depuis la vue dossier
+function editNoteFromFolder(noteId, event) {
+    event.stopPropagation();
+    openNoteFromFolder(noteId);
+}
+
+// Supprimer une note depuis la vue dossier
+function deleteNoteFromFolder(noteId, event) {
+    event.stopPropagation();
+    
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette note ?')) {
+        // Appeler l'API pour supprimer la note
+        fetch(`/api/notes/${noteId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Note supprimée avec succès!', 'success');
+                // Recharger les notes du dossier
+                loadFolderNotes(event.target.closest('.folder-content').id);
+                // Mettre à jour les compteurs
+                setTimeout(updateAllFolderCounts, 300);
+            } else {
+                showNotification('Erreur lors de la suppression', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Erreur lors de la suppression:', error);
+            showNotification('Erreur lors de la suppression', 'error');
+        });
+    }
+}
+
+// Ajouter une note à un dossier spécifique
+function addNoteToFolder(folderId, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    
+    // Stocker l'ID du dossier pour la création de note
+    window.currentFolderId = folderId;
+    
+    // Ouvrir la modal de création de note dans le dossier
+    openFolderNoteModal();
+}
+
+// Ouvrir la modal de création de note dans un dossier
+function openFolderNoteModal() {
+    const modal = document.getElementById('folderNoteModal');
+    const sidebar = document.querySelector('.sidebar');
+    
+    // Réinitialiser le formulaire
+    document.getElementById('folderNoteTitle').value = '';
+    
+    // Afficher la modal
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    
+    // Ajouter l'effet de flou sur la sidebar
+    if (sidebar) {
+        sidebar.style.backdropFilter = 'blur(4px)';
+        sidebar.style.transition = 'backdrop-filter 0.2s ease-out';
+    }
+    
+    // Focus sur le champ de titre
+    setTimeout(() => {
+        document.getElementById('folderNoteTitle').focus();
+    }, 100);
+}
+
+// Fermer la modal de création de note dans un dossier
+function closeFolderNoteModal() {
+    const modal = document.getElementById('folderNoteModal');
+    const sidebar = document.querySelector('.sidebar');
+    
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    
+    // Retirer l'effet de flou de la sidebar
+    if (sidebar) {
+        sidebar.style.backdropFilter = 'none';
+    }
+    
+    window.currentFolderId = null;
+}
+
+// Créer la note dans le dossier
+function createFolderNote() {
+    const noteTitle = document.getElementById('folderNoteTitle').value.trim();
+    const folderId = window.currentFolderId;
+    
+    if (!noteTitle) {
+        document.getElementById('folderNoteTitle').classList.add('border-red-500');
+        document.getElementById('folderNoteTitle').focus();
+        return;
+    }
+    
+    // Stocker les informations pour la confirmation
+    window.pendingNoteData = {
+        title: noteTitle,
+        folderId: folderId
+    };
+    
+    // Fermer la modal de création
+    closeFolderNoteModal();
+    
+    // Afficher la modal de confirmation
+    showConfirmNoteModal(noteTitle);
+}
+
+// Afficher la modal de confirmation
+function showConfirmNoteModal(noteTitle) {
+    const modal = document.getElementById('confirmNoteModal');
+    const noteNameSpan = document.getElementById('confirmNoteName');
+    
+    // Mettre à jour le nom de la note dans la confirmation
+    noteNameSpan.textContent = noteTitle;
+    
+    // Afficher la modal
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+// Confirmer la création de la note et rediriger vers l'éditeur
+function confirmNoteCreation() {
+    const noteData = window.pendingNoteData;
+    
+    if (!noteData) {
+        return;
+    }
+    
+    // Créer une note temporaire avec le titre et le dossier
+    const tempNote = {
+        title: noteData.title,
+        folder: noteData.folderId,
+        created_at: new Date().toISOString()
+    };
+    
+    // Sauvegarder dans le sessionStorage pour la récupérer dans l'éditeur
+    sessionStorage.setItem('temp_note_data', JSON.stringify(tempNote));
+    
+    // Générer un ID temporaire pour l'historique
+    const tempNoteId = 'temp_' + Date.now();
+    
+    // Ajouter à l'historique des notes récentes
+    addToRecentHistory(tempNoteId, noteData.title, noteData.folderId);
+    
+    // Fermer la modal de confirmation
+    closeConfirmNoteModal();
+    
+    // Rediriger vers l'éditeur de notes
+    window.location.href = '{{ url_for("note_editor") }}';
+}
+
+// Annuler la création de la note et revenir à la modal précédente
+function cancelNoteCreation() {
+    // Fermer la modal de confirmation
+    closeConfirmNoteModal();
+    
+    // Réouvrir la modal de création avec le titre pré-rempli
+    const noteData = window.pendingNoteData;
+    if (noteData) {
+        window.currentFolderId = noteData.folderId;
+        openFolderNoteModal();
+        
+        // Pré-remplir le titre
+        setTimeout(() => {
+            document.getElementById('folderNoteTitle').value = noteData.title;
+            document.getElementById('folderNoteTitle').focus();
+        }, 100);
+    }
+}
+
+// Fermer la modal de confirmation
+function closeConfirmNoteModal() {
+    const modal = document.getElementById('confirmNoteModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    
+    window.pendingNoteData = null;
+}
+
+// Sauvegarder une note dans un dossier
+function saveNoteToFolder(folderId, note) {
+    const folders = getFoldersFromStorage();
+    const folderIndex = folders.findIndex(f => f.id === folderId);
+    
+    if (folderIndex !== -1) {
+        if (!folders[folderIndex].notes) {
+            folders[folderIndex].notes = [];
+        }
+        folders[folderIndex].notes.push(note);
+        localStorage.setItem('custom_folders', JSON.stringify(folders));
+        console.log('💾 Note sauvegardée dans le localStorage:', note.title);
+    }
+}
+
+// Mettre à jour le compteur de notes d'un dossier
+function updateFolderCount(folderId) {
+    const folder = document.querySelector(`[data-folder="${folderId}"]`);
+    const notesGrid = folder.querySelector('.folder-content .grid');
+    const folderCount = folder.querySelector('.folder-count');
+    const count = notesGrid.querySelectorAll('.note-card').length;
+    folderCount.textContent = count + ' note' + (count > 1 ? 's' : '');
+}
+
+// Supprimer une note d'un dossier
+function deleteNoteFromFolder(folderId, noteId) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette note ?')) {
+        // Supprimer du localStorage
+        const folders = getFoldersFromStorage();
+        const folderIndex = folders.findIndex(f => f.id === folderId);
+        
+        if (folderIndex !== -1 && folders[folderIndex].notes) {
+            folders[folderIndex].notes = folders[folderIndex].notes.filter(note => note.id !== noteId);
+            localStorage.setItem('custom_folders', JSON.stringify(folders));
+        }
+        
+        // Supprimer du DOM
+        const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
+        if (noteElement) {
+            noteElement.remove();
+            updateFolderCount(folderId);
+        }
+        
+        console.log('🗑️ Note supprimée:', noteId);
+    }
+}
+
+// Mettre à jour le sélecteur de dossiers
+function updateFolderSelector() {
+    const selector = document.querySelector('select[name="folder"]');
+    if (!selector) return;
+    
+    selector.innerHTML = '';
+    document.querySelectorAll('.folder-item').forEach(folder => {
+        const folderName = folder.querySelector('.folder-name').textContent;
+        const folderId = folder.getAttribute('data-folder');
+        const option = document.createElement('option');
+        option.value = folderId;
+        option.textContent = folderName;
+        selector.appendChild(option);
+    });
+}
+
+// Renommer un dossier
+function renameFolder(folderId, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    
+    if (folderId === 'general') {
+        alert('Le dossier général ne peut pas être renommé.');
+        return;
+    }
+    
+    const folder = document.querySelector(`[data-folder="${folderId}"]`);
+    const folderName = folder.querySelector('.folder-name');
+    const currentName = folderName.textContent;
+    
+    // Stocker l'ID du dossier à renommer
+    window.currentFolderId = folderId;
+    
+    // Ouvrir la modal de renommage
+    openRenameModal(currentName);
+}
+
+// Ouvrir la modal de renommage
+function openRenameModal(currentName) {
+    const modal = document.getElementById('renameModal');
+    const sidebar = document.querySelector('.sidebar');
+    
+    // Pré-remplir le champ avec le nom actuel
+    document.getElementById('newFolderName').value = currentName;
+    
+    // Afficher la modal
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    
+    // Ajouter l'effet de flou sur la sidebar
+    if (sidebar) {
+        sidebar.style.backdropFilter = 'blur(4px)';
+        sidebar.style.transition = 'backdrop-filter 0.2s ease-out';
+    }
+    
+    // Focus sur le champ de nom
+    setTimeout(() => {
+        document.getElementById('newFolderName').focus();
+        document.getElementById('newFolderName').select();
+    }, 100);
+}
+
+// Fermer la modal de renommage
+function closeRenameModal() {
+    const modal = document.getElementById('renameModal');
+    const sidebar = document.querySelector('.sidebar');
+    
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    
+    // Retirer l'effet de flou de la sidebar
+    if (sidebar) {
+        sidebar.style.backdropFilter = 'none';
+    }
+    
+    window.currentFolderId = null;
+}
+
+// Exécuter le renommage du dossier
+function performRename() {
+    const newName = document.getElementById('newFolderName').value.trim();
+    
+    if (!newName) {
+        document.getElementById('newFolderName').classList.add('border-red-500');
+        document.getElementById('newFolderName').focus();
+        return;
+    }
+    
+    const folderId = window.currentFolderId;
+    const folder = document.querySelector(`[data-folder="${folderId}"]`);
+    const folderName = folder.querySelector('.folder-name');
+    
+    // Mettre à jour le nom dans l'interface
+    folderName.textContent = newName;
+    
+    // Mettre à jour le nom dans le localStorage
+    updateFolderNameInStorage(folderId, newName);
+    
+    // Mettre à jour le titre dans le contenu du dossier
+    const folderContent = document.getElementById(folderId);
+    if (folderContent) {
+        const titleElement = folderContent.querySelector('h4');
+        if (titleElement) {
+            titleElement.innerHTML = `<i class="fas fa-folder text-blue-500 mr-2"></i>Notes du dossier ${newName}`;
+        }
+    }
+    
+    // Mettre à jour le sélecteur de dossiers
+    updateFolderSelector();
+    
+    // Fermer la modal
+    closeRenameModal();
+    
+    showNotification('Dossier renommé avec succès!', 'success');
+    console.log('✏️ Dossier renommé:', folderId, newName);
+}
+
+// Mettre à jour le nom d'un dossier dans le localStorage
+function updateFolderNameInStorage(folderId, newName) {
+    let folders = getFoldersFromStorage();
+    const folderIndex = folders.findIndex(f => f.id === folderId);
+    if (folderIndex !== -1) {
+        folders[folderIndex].name = newName;
+        localStorage.setItem('custom_folders', JSON.stringify(folders));
+    }
+}
+
+// Supprimer un dossier
+function deleteFolder(folderId, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    
+    if (folderId === 'general') {
+        alert('Le dossier général ne peut pas être supprimé.');
+        return;
+    }
+    
+    const folder = document.querySelector(`[data-folder="${folderId}"]`);
+    const folderName = folder.querySelector('.folder-name').textContent;
+    
+    if (confirm(`Êtes-vous sûr de vouloir supprimer le dossier "${folderName}" et toutes ses notes ?`)) {
+        // Supprimer du localStorage
+        deleteFolderFromStorage(folderId);
+        
+        // Supprimer du DOM
+        folder.remove();
+        
+        // Supprimer le contenu du dossier
+        const folderContent = document.getElementById(folderId);
+        if (folderContent) {
+            folderContent.remove();
+        }
+        
+        updateFolderSelector();
+        console.log('🗑️ Dossier supprimé:', folderId);
+    }
+}
+
+// Changer la couleur d'un dossier
+function changeFolderColor(folderId, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    
+    // Stocker l'ID du dossier à modifier
+    window.currentFolderId = folderId;
+    
+    // Ouvrir la modal de couleur
+    openColorModal();
+}
+
+// Ouvrir la modal de changement de couleur
+function openColorModal() {
+    const modal = document.getElementById('colorModal');
+    const colorPicker = document.getElementById('colorPickerModal');
+    const sidebar = document.querySelector('.sidebar');
+    
+    // Générer les options de couleur
+    colorPicker.innerHTML = '';
+    folderColors.forEach((color, index) => {
+        const colorOption = document.createElement('div');
+        colorOption.className = `cursor-pointer p-4 rounded-lg border-2 transition-all ${color.bg} ${color.border} hover:scale-105 w-fit`;
+        colorOption.innerHTML = `
+            <div class="text-center">
+                <div class="w-12 h-12 mx-auto mb-2 rounded-lg ${color.bg} ${color.border} border-2 flex items-center justify-center">
+                    <i class="fas fa-folder ${color.icon} text-xl"></i>
+                </div>
+                <p class="text-xs font-medium text-gray-700">${color.name}</p>
+            </div>
+        `;
+        colorOption.onclick = () => selectFolderColor(index);
+        colorOption.id = `color-modal-${index}`;
+        colorPicker.appendChild(colorOption);
+    });
+    
+    // Afficher la modal
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    
+    // Ajouter l'effet de flou sur la sidebar
+    if (sidebar) {
+        sidebar.style.backdropFilter = 'blur(4px)';
+        sidebar.style.transition = 'backdrop-filter 0.2s ease-out';
+    }
+}
+
+// Fermer la modal de changement de couleur
+function closeColorModal() {
+    try {
+        console.log('🔄 Tentative de fermeture de la modal de couleur...');
+        const modal = document.getElementById('colorModal');
+        const sidebar = document.querySelector('.sidebar');
+        
+        if (!modal) {
+            console.error('❌ Modal de couleur non trouvée');
+            return;
+        }
+        
+        console.log('📋 Modal trouvée, classes actuelles:', modal.className);
+        
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        
+        console.log('✅ Modal mise à jour:', modal.className);
+        
+        // Retirer l'effet de flou de la sidebar
+        if (sidebar) {
+            sidebar.style.backdropFilter = 'none';
+            console.log('🔄 Effet de flou retiré de la sidebar');
+        }
+        
+        window.currentFolderId = null;
+        console.log('✅ Modal de couleur fermée avec succès');
+        
+    } catch (error) {
+        console.error('❌ Erreur lors de la fermeture de la modal:', error);
+    }
+}
+
+// Sélectionner une couleur pour le dossier
+function selectFolderColor(index) {
+    try {
+        const newColor = folderColors[index];
+        const folderId = window.currentFolderId;
+        
+        if (!folderId) return;
+        
+        const folder = document.querySelector(`[data-folder="${folderId}"]`);
+        
+        // Mettre à jour les classes CSS du widget
+        folder.className = `folder-widget ${newColor.bg} ${newColor.border}`;
+        folder.setAttribute('data-color', JSON.stringify(newColor));
+        
+        // Mettre à jour l'icône et le badge
+        const folderIcon = folder.querySelector('.folder-icon');
+        const folderBadge = folder.querySelector('.folder-count');
+        
+        folderIcon.className = `fas fa-folder${folder.classList.contains('collapsed') ? '' : '-open'} ${newColor.icon} folder-icon text-4xl`;
+        folderBadge.className = `${newColor.badge} px-2 py-1 rounded-full text-xs folder-count`;
+        
+        // Gérer le cas du dossier général
+        if (folderId === 'general') {
+            // Sauvegarder la couleur du dossier général dans le localStorage
+            localStorage.setItem('general_folder_color', JSON.stringify(newColor));
+            console.log('🎨 Couleur du dossier général sauvegardée:', newColor.name);
+        } else {
+            // Mettre à jour le localStorage pour les dossiers personnalisés
+            updateFolderColorInStorage(folderId, newColor);
+        }
+        
+        // Mettre à jour le titre dans le contenu du dossier
+        const folderContent = document.getElementById(folderId);
+        if (folderContent) {
+            const titleIcon = folderContent.querySelector('h4 i');
+            if (titleIcon) {
+                titleIcon.className = `fas fa-folder ${newColor.icon} mr-2`;
+            }
+        }
+        
+        // Fermer la modal immédiatement
+        console.log('🔄 Fermeture de la modal de couleur...');
+        closeColorModal();
+        console.log('✅ Modal de couleur fermée');
+        
+        showNotification('Couleur du dossier changée avec succès!', 'success');
+        console.log('🎨 Couleur du dossier changée:', folderId, newColor.name);
+        
+        // Sauvegarder automatiquement après changement de couleur
+        syncWithServer();
+        
+    } catch (error) {
+        console.error('❌ Erreur lors du changement de couleur:', error);
+        // Fermer la modal même en cas d'erreur
+        closeColorModal();
+    }
+}
+
+// Mettre à jour la couleur d'un dossier dans le localStorage
+function updateFolderColorInStorage(folderId, newColor) {
+    let folders = getFoldersFromStorage();
+    const folderIndex = folders.findIndex(f => f.id === folderId);
+    if (folderIndex !== -1) {
+        folders[folderIndex].color = newColor;
+        localStorage.setItem('custom_folders', JSON.stringify(folders));
+    }
+}
+
+// Mettre à jour les compteurs de notes pour tous les dossiers
+function updateAllFolderCounts() {
+    try {
+        // Charger les notes depuis le serveur
+        fetch('/api/notes_data')
+            .then(response => response.json())
+            .then(data => {
+                if (data.notes) {
+                    // Compter les notes par dossier
+                    const folderCounts = {};
+                    
+                    // Initialiser tous les dossiers à 0
+                    document.querySelectorAll('[data-folder]').forEach(folder => {
+                        const folderId = folder.getAttribute('data-folder');
+                        folderCounts[folderId] = 0;
+                    });
+                    
+                    // Compter les notes dans chaque dossier
+                    data.notes.forEach(note => {
+                        const folder = note.folder || 'general';
+                        if (folderCounts[folder] !== undefined) {
+                            folderCounts[folder]++;
+                        }
+                    });
+                    
+                    // Mettre à jour les compteurs dans l'interface
+                    Object.keys(folderCounts).forEach(folderId => {
+                        const folder = document.querySelector(`[data-folder="${folderId}"]`);
+                        if (folder) {
+                            const counter = folder.querySelector('.folder-count');
+                            if (counter) {
+                                const count = folderCounts[folderId];
+                                counter.textContent = count;
+                                console.log(`📊 Dossier ${folderId}: ${count} note(s)`);
+                            }
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('❌ Erreur lors du chargement des notes pour les compteurs:', error);
+            });
+    } catch (error) {
+        console.error('❌ Erreur lors de la mise à jour des compteurs:', error);
+    }
+}
+
+// Initialiser au chargement
+document.addEventListener('DOMContentLoaded', function() {
+    updateFolderSelector();
+    
+    // Charger les données depuis le serveur d'abord
+    loadFromServer();
+    
+    // Appliquer les couleurs au dossier général
+    applyColorToGeneralFolder();
+    
+    // Charger l'arrière-plan sauvegardé
+    loadSavedBackground();
+    
+    // Mettre à jour les compteurs de notes
+    setTimeout(updateAllFolderCounts, 500); // Attendre que les dossiers soient chargés
+    
+    // Ajouter le gestionnaire d'événements pour le formulaire de création de dossier
+    const folderForm = document.getElementById('folderForm');
+    if (folderForm) {
+        folderForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            createFolder();
+        });
+    }
+    
+    // Ajouter le gestionnaire d'événements pour le formulaire de renommage
+    const renameForm = document.getElementById('renameForm');
+    if (renameForm) {
+        renameForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            performRename();
+        });
+    }
+    
+    // Ajouter le gestionnaire d'événements pour le formulaire de note dans dossier
+    const folderNoteForm = document.getElementById('folderNoteForm');
+    if (folderNoteForm) {
+        folderNoteForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            createFolderNote();
+        });
+    }
+    
+    // Gérer la touche Échap pour fermer les modals
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeFolderModal();
+            closeNoteModal();
+            closeColorModal();
+            closeRenameModal();
+            closeFolderNoteModal();
+            closeConfirmNoteModal();
+        }
+    });
+    
+    // Nettoyer les champs en cas de saisie
+    const folderNameInput = document.getElementById('folderName');
+    if (folderNameInput) {
+        folderNameInput.addEventListener('input', function() {
+            this.classList.remove('border-red-500');
+        });
+    }
+    
+    const renameNameInput = document.getElementById('newFolderName');
+    if (renameNameInput) {
+        renameNameInput.addEventListener('input', function() {
+            this.classList.remove('border-red-500');
+        });
+    }
+    
+    const folderNoteTitleInput = document.getElementById('folderNoteTitle');
+    if (folderNoteTitleInput) {
+        folderNoteTitleInput.addEventListener('input', function() {
+            this.classList.remove('border-red-500');
+        });
+    }
+    
+    // Ajouter le gestionnaire d'événements pour le formulaire de note
+    const noteForm = document.getElementById('noteForm');
+    if (noteForm) {
+        noteForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            createNoteAndRedirect();
+        });
+    }
+    
+    // Mettre à jour le sélecteur de dossiers dans la modal de note
+    updateNoteFolderSelector();
+    
+    // Démarrer la sauvegarde automatique toutes les 2 minutes
+    startAutoSave();
+});
+
+// Charger les données depuis le serveur
+async function loadFromServer() {
+    try {
+        const response = await fetch('/api/notes_data');
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Sauvegarder SEULEMENT les dossiers personnalisés (pas le dossier général)
+            if (data.folders && data.folders.length > 0) {
+                // Filtrer pour exclure le dossier général des dossiers personnalisés
+                const customFolders = data.folders.filter(f => f.id !== 'general');
+                localStorage.setItem('custom_folders', JSON.stringify(customFolders));
+                console.log('📥 Dossiers personnalisés chargés depuis le serveur:', customFolders.length);
+                
+                // Gérer la couleur du dossier général séparément
+                const generalFolder = data.folders.find(f => f.id === 'general');
+                if (generalFolder && generalFolder.color) {
+                    localStorage.setItem('general_folder_color', JSON.stringify(generalFolder.color));
+                    console.log('🎨 Couleur du dossier général chargée depuis le serveur:', generalFolder.color.name);
+                }
+            }
+            
+            // Charger les dossiers sauvegardés
+            loadSavedFolders();
+            
+            // Mettre à jour les compteurs de notes après le chargement des dossiers
+            setTimeout(updateAllFolderCounts, 300);
+            
+            showNotification('Données chargées avec succès!', 'success');
+        } else {
+            console.log('ℹ️ Aucune donnée sur le serveur, utilisation du localStorage');
+            loadSavedFolders();
+            setTimeout(updateAllFolderCounts, 500);
+        }
+    } catch (error) {
+        console.error('❌ Erreur lors du chargement depuis le serveur:', error);
+        loadSavedFolders();
+        setTimeout(updateAllFolderCounts, 500);
+    }
+}
+
+// Système de sauvegarde automatique
+let autoSaveInterval;
+
+function startAutoSave() {
+    // Sauvegarder immédiatement au démarrage
+    syncWithServer();
+    
+    // Puis sauvegarder toutes les 2 minutes (120000 ms)
+    autoSaveInterval = setInterval(syncWithServer, 120000);
+    
+    console.log('🔄 Sauvegarde automatique démarrée (toutes les 2 minutes)');
+}
+
+function stopAutoSave() {
+    if (autoSaveInterval) {
+        clearInterval(autoSaveInterval);
+        console.log('⏹️ Sauvegarde automatique arrêtée');
+    }
+}
+
+// Synchroniser avec le serveur
+async function syncWithServer() {
+    try {
+        const folders = getFoldersFromStorage();
+        
+        // Inclure la couleur du dossier général dans les données
+        const generalColor = localStorage.getItem('general_folder_color');
+        if (generalColor) {
+            // Mettre à jour la couleur du dossier général dans le localStorage
+            // NE PAS ajouter le dossier général à la liste des dossiers personnalisés
+            // car il existe déjà dans le HTML et est géré différemment
+            console.log('🎨 Couleur du dossier général synchronisée:', JSON.parse(generalColor).name);
+        }
+        
+        // Envoyer SEULEMENT les dossiers personnalisés (pas le dossier général)
+        const response = await fetch('/api/sync_folders', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                folders: folders,
+                general_color: generalColor ? JSON.parse(generalColor) : null
+            })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            console.log('✅ Synchronisation réussie:', result.message);
+            showNotification('Données sauvegardées avec succès!', 'success');
+        } else {
+            console.error('❌ Erreur de synchronisation:', response.statusText);
+            showNotification('Erreur de synchronisation', 'error');
+        }
+    } catch (error) {
+        console.error('❌ Erreur lors de la synchronisation:', error);
+        showNotification('Erreur de sauvegarde automatique', 'error');
+    }
+}
+
+// Sauvegarder manuellement
+function manualSave() {
+    syncWithServer();
+}
+
+// Ouvrir la modal de création de note
+function openNoteModal() {
+    const modal = document.getElementById('noteModal');
+    const sidebar = document.querySelector('.sidebar');
+    
+    // Réinitialiser le formulaire
+    document.getElementById('noteTitle').value = '';
+    document.getElementById('noteFolder').value = 'general';
+    
+    // Afficher la modal
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    
+    // Ajouter l'effet de flou sur la sidebar
+    if (sidebar) {
+        sidebar.style.backdropFilter = 'blur(4px)';
+        sidebar.style.transition = 'backdrop-filter 0.2s ease-out';
+    }
+    
+    // Focus sur le champ de titre
+    setTimeout(() => {
+        document.getElementById('noteTitle').focus();
+    }, 100);
+}
+
+// Fermer la modal de création de note
+function closeNoteModal() {
+    const modal = document.getElementById('noteModal');
+    const sidebar = document.querySelector('.sidebar');
+    
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    
+    // Retirer l'effet de flou de la sidebar
+    if (sidebar) {
+        sidebar.style.backdropFilter = 'none';
+    }
+}
+
+// Mettre à jour le sélecteur de dossiers dans la modal de note
+function updateNoteFolderSelector() {
+    const selector = document.getElementById('noteFolder');
+    if (!selector) return;
+    
+    selector.innerHTML = '<option value="general">Général</option>';
+    
+    // Ajouter les dossiers personnalisés
+    const folders = getFoldersFromStorage();
+    folders.forEach(folder => {
+        const option = document.createElement('option');
+        option.value = folder.id;
+        option.textContent = folder.name;
+        selector.appendChild(option);
+    });
+}
+
+// Créer la note et rediriger vers l'éditeur
+function createNoteAndRedirect() {
+    const noteTitle = document.getElementById('noteTitle').value.trim();
+    const noteFolder = document.getElementById('noteFolder').value;
+    
+    if (!noteTitle) {
+        document.getElementById('noteTitle').classList.add('border-red-500');
+        document.getElementById('noteTitle').focus();
+        return;
+    }
+    
+    // Créer une note temporaire avec le titre et le dossier
+    const tempNote = {
+        title: noteTitle,
+        folder: noteFolder,
+        created_at: new Date().toISOString()
+    };
+    
+    // Sauvegarder dans le sessionStorage pour la récupérer dans l'éditeur
+    sessionStorage.setItem('temp_note_data', JSON.stringify(tempNote));
+    
+    // Générer un ID temporaire pour l'historique
+    const tempNoteId = 'temp_' + Date.now();
+    
+    // Ajouter à l'historique des notes récentes
+    addToRecentHistory(tempNoteId, noteTitle, noteFolder);
+    
+    // Rediriger vers l'éditeur de notes
+    window.location.href = '{{ url_for("note_editor") }}';
+}
+
+// Appliquer la couleur au dossier général
+function applyColorToGeneralFolder() {
+    const generalFolder = document.querySelector('[data-folder="general"]');
+    if (generalFolder) {
+        // Essayer de charger la couleur sauvegardée, sinon utiliser la couleur par défaut
+        let generalColor;
+        try {
+            const savedColor = localStorage.getItem('general_folder_color');
+            if (savedColor) {
+                generalColor = JSON.parse(savedColor);
+                console.log('🎨 Couleur du dossier général chargée:', generalColor.name);
+            } else {
+                // Utiliser la couleur par défaut du HTML
+                generalColor = JSON.parse(generalFolder.getAttribute('data-color'));
+            }
+        } catch (error) {
+            console.error('❌ Erreur lors du chargement de la couleur du dossier général:', error);
+            generalColor = JSON.parse(generalFolder.getAttribute('data-color'));
+        }
+        
+        const folderIcon = generalFolder.querySelector('.folder-icon');
+        
+        // Appliquer les classes de couleur au widget
+        generalFolder.className = `folder-widget ${generalColor.bg} ${generalColor.border}`;
+        generalFolder.setAttribute('data-color', JSON.stringify(generalColor));
+        
+        // Appliquer la couleur à l'icône
+        folderIcon.className = `fas fa-folder-open ${generalColor.icon} folder-icon text-4xl`;
+        
+        // Appliquer la couleur au badge
+        const folderBadge = generalFolder.querySelector('.folder-count');
+        if (folderBadge) {
+            folderBadge.className = `${generalColor.badge} px-2 py-1 rounded-full text-xs folder-count`;
+        }
+    }
+}
+
+// Ouvrir le menu de personnalisation
+function openPersonalizationMenu() {
+    const panel = document.getElementById('personalizationPanel');
+    const body = document.body;
+    
+    // Ajouter la classe pour l'effet de slide
+    body.classList.add('personalization-open');
+    
+    // Ouvrir le bandeau
+    panel.classList.remove('translate-x-full');
+    panel.classList.add('translate-x-0');
+    
+    console.log('🎨 Bandeau de personnalisation ouvert');
+}
+
+// Fermer le menu de personnalisation
+function closePersonalizationMenu() {
+    const panel = document.getElementById('personalizationPanel');
+    const body = document.body;
+    
+    // Retirer la classe immédiatement pour que le contenu commence à revenir
+    body.classList.remove('personalization-open');
+    
+    // Fermer le bandeau en même temps
+    panel.classList.remove('translate-x-0');
+    panel.classList.add('translate-x-full');
+    
+    console.log('🎨 Bandeau de personnalisation fermé - animations synchronisées');
+}
+
+// Fermer le bandeau lors d'un clic extérieur
+document.addEventListener('DOMContentLoaded', function() {
+    const panel = document.getElementById('personalizationPanel');
+    
+    // Ajouter un écouteur d'événement sur tout le document
+    document.addEventListener('click', function(event) {
+        // Vérifier si le bandeau est ouvert
+        if (panel.classList.contains('translate-x-0')) {
+            // Vérifier si le clic est à l'extérieur du bandeau
+            if (!panel.contains(event.target)) {
+                // Vérifier que le clic n'est pas sur le bouton d'ouverture
+                if (!event.target.closest('button[onclick="openPersonalizationMenu()"]')) {
+                    closePersonalizationMenu();
+                    console.log('🎨 Bandeau fermé par clic extérieur');
+                }
+            }
+        }
+    });
+    
+    // Empêcher la propagation du clic à l'intérieur du bandeau
+    panel.addEventListener('click', function(event) {
+        event.stopPropagation();
+    });
+});
+
+// Appliquer l'image de fond
+function applyBackground() {
+    const imageUrl = '/static/uploads/imagebackgroundnote1.jpg';
+    
+    // Créer ou mettre à jour l'élément de fond
+    let backgroundElement = document.getElementById('pageBackground');
+    if (!backgroundElement) {
+        backgroundElement = document.createElement('div');
+        backgroundElement.id = 'pageBackground';
+        backgroundElement.className = 'background-page';
+        document.body.appendChild(backgroundElement);
+    }
+    
+    backgroundElement.style.backgroundImage = `url(${imageUrl})`;
+    
+    // Sauvegarder dans le localStorage
+    localStorage.setItem('background_image', imageUrl);
+    
+    showNotification('Arrière-plan appliqué avec succès!', 'success');
+    console.log('🎨 Arrière-plan appliqué:', imageUrl);
+}
+
+// Appliquer l'image de fond sans fermer le bandeau
+function applyBackgroundWithoutClosing() {
+    const imageUrl = '/static/uploads/imagebackgroundnote1.jpg';
+    
+    // Créer ou mettre à jour l'élément de fond
+    let backgroundElement = document.getElementById('pageBackground');
+    if (!backgroundElement) {
+        backgroundElement = document.createElement('div');
+        backgroundElement.id = 'pageBackground';
+        backgroundElement.className = 'background-page';
+        document.body.appendChild(backgroundElement);
+    }
+    
+    backgroundElement.style.backgroundImage = `url(${imageUrl})`;
+    
+    // Sauvegarder dans le localStorage
+    localStorage.setItem('background_image', imageUrl);
+    
+    // Afficher une notification de succès sans fermer le bandeau
+    showNotification('Arrière-plan appliqué avec succès!', 'success');
+    console.log('🎨 Arrière-plan appliqué (bandeau ouvert):', imageUrl);
+    
+    // Effet visuel temporaire sur l'image pour montrer qu'elle a été appliquée
+    const previewImg = document.getElementById('backgroundPreview');
+    previewImg.style.opacity = '0.7';
+    setTimeout(() => {
+        previewImg.style.opacity = '1';
+    }, 300);
+}
+
+// Variable pour stocker l'image sélectionnée de la bibliothèque
+let selectedLibraryImage = null;
+
+// Sélectionner une image de la bibliothèque
+function selectLibraryImage(imageUrl) {
+    selectedLibraryImage = imageUrl;
+    
+    // Mettre à jour l'aperçu principal
+    const previewImg = document.getElementById('backgroundPreview');
+    previewImg.src = imageUrl;
+    
+    // Mettre à jour les bordures pour montrer la sélection
+    document.querySelectorAll('.grid-cols-2 .relative').forEach(item => {
+        const img = item.querySelector('img');
+        if (img && img.src.includes(imageUrl.split('/').pop())) {
+            img.classList.remove('border-gray-200');
+            img.classList.add('border-blue-500', 'ring-2', 'ring-blue-300');
+        } else {
+            img.classList.remove('border-blue-500', 'ring-2', 'ring-blue-300');
+            img.classList.add('border-gray-200');
+        }
+    });
+    
+    console.log('📷 Image de bibliothèque sélectionnée:', imageUrl);
+}
+
+// Appliquer l'image sélectionnée de la bibliothèque
+function applySelectedBackground() {
+    if (!selectedLibraryImage) {
+        showNotification('Veuillez d\'abord sélectionner une image dans la bibliothèque', 'warning');
+        return;
+    }
+    
+    // Créer ou mettre à jour l'élément de fond
+    let backgroundElement = document.getElementById('pageBackground');
+    if (!backgroundElement) {
+        backgroundElement = document.createElement('div');
+        backgroundElement.id = 'pageBackground';
+        backgroundElement.className = 'background-page';
+        document.body.appendChild(backgroundElement);
+    }
+    
+    backgroundElement.style.backgroundImage = `url(${selectedLibraryImage})`;
+    
+    // Sauvegarder dans le localStorage
+    localStorage.setItem('background_image', selectedLibraryImage);
+    
+    showNotification('Arrière-plan appliqué avec succès!', 'success');
+    console.log('🎨 Arrière-plan de bibliothèque appliqué:', selectedLibraryImage);
+}
+
+// Appliquer une couleur de fond personnalisée automatiquement
+function applyColorBackground(color) {
+    // Créer ou mettre à jour l'élément de fond
+    let backgroundElement = document.getElementById('pageBackground');
+    if (!backgroundElement) {
+        backgroundElement = document.createElement('div');
+        backgroundElement.id = 'pageBackground';
+        backgroundElement.className = 'background-page';
+        document.body.appendChild(backgroundElement);
+    }
+    
+    // Appliquer la couleur de fond
+    backgroundElement.style.backgroundImage = 'none';
+    backgroundElement.style.backgroundColor = color;
+    
+    // Sauvegarder dans le localStorage
+    localStorage.setItem('background_color', color);
+    localStorage.removeItem('background_image'); // Supprimer l'image si présente
+    
+    // Afficher une notification de succès
+    showNotification(`Couleur de fond appliquée: ${color}`, 'success');
+    console.log('🎨 Couleur de fond appliquée automatiquement:', color);
+}
+
+// Variables globales pour l'image personnalisée
+let customImageData = null;
+
+// Gérer le téléversement d'image personnalisée
+function handleCustomImage(event) {
+    const file = event.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            customImageData = e.target.result;
+            
+            // Afficher l'aperçu
+            const previewContainer = document.getElementById('customImagePreview');
+            const previewImg = document.getElementById('customPreviewImg');
+            
+            previewImg.src = customImageData;
+            previewContainer.classList.remove('hidden');
+            
+            console.log('📷 Image personnalisée chargée:', file.name);
+        };
+        
+        reader.readAsDataURL(file);
+    } else {
+        showNotification('Veuillez sélectionner un fichier image valide', 'error');
+    }
+}
+
+// Appliquer l'image personnalisée comme arrière-plan
+function applyCustomImage() {
+    if (!customImageData) {
+        showNotification('Aucune image à appliquer', 'error');
+        return;
+    }
+    
+    // Créer ou mettre à jour l'élément de fond
+    let backgroundElement = document.getElementById('pageBackground');
+    if (!backgroundElement) {
+        backgroundElement = document.createElement('div');
+        backgroundElement.id = 'pageBackground';
+        backgroundElement.className = 'background-page';
+        document.body.appendChild(backgroundElement);
+    }
+    
+    // Appliquer l'image personnalisée
+    backgroundElement.style.backgroundImage = `url(${customImageData})`;
+    backgroundElement.style.backgroundColor = 'transparent';
+    
+    // Sauvegarder dans le localStorage
+    localStorage.setItem('custom_background_image', customImageData);
+    localStorage.removeItem('background_image'); // Supprimer l'image par défaut
+    localStorage.removeItem('background_color'); // Supprimer la couleur
+    
+    // Masquer l'aperçu
+    document.getElementById('customImagePreview').classList.add('hidden');
+    
+    // Réinitialiser le file input
+    document.getElementById('customImageUpload').value = '';
+    
+    showNotification('Photo personnalisée appliquée avec succès!', 'success');
+    console.log('🎨 Photo personnalisée appliquée comme arrière-plan');
+    
+    // Effet visuel temporaire
+    const previewImg = document.getElementById('customPreviewImg');
+    previewImg.style.opacity = '0.7';
+    setTimeout(() => {
+        previewImg.style.opacity = '1';
+    }, 300);
+}
+
+// Annuler l'upload d'image personnalisée
+function cancelCustomImage() {
+    // Masquer l'aperçu
+    document.getElementById('customImagePreview').classList.add('hidden');
+    
+    // Réinitialiser les variables
+    customImageData = null;
+    
+    // Réinitialiser le file input
+    document.getElementById('customImageUpload').value = '';
+    
+    console.log('📷 Upload d\'image personnalisée annulé');
+}
+
+// Synchroniser le color picker et appliquer automatiquement la couleur
+document.addEventListener('DOMContentLoaded', function() {
+    const colorPicker = document.getElementById('colorPicker');
+    
+    if (colorPicker) {
+        // Quand la roulette change, appliquer automatiquement la couleur
+        colorPicker.addEventListener('input', function() {
+            const selectedColor = this.value;
+            applyColorBackground(selectedColor);
+        });
+    }
+    
+    // Charger l'arrière-plan sauvegardé au démarrage (priorité: image personnalisée > image par défaut > couleur)
+    const customImage = localStorage.getItem('custom_background_image');
+    const defaultImage = localStorage.getItem('background_image');
+    const savedColor = localStorage.getItem('background_color');
+    
+    if (customImage) {
+        // Appliquer l'image personnalisée
+        let backgroundElement = document.getElementById('pageBackground');
+        if (!backgroundElement) {
+            backgroundElement = document.createElement('div');
+            backgroundElement.id = 'pageBackground';
+            backgroundElement.className = 'background-page';
+            document.body.appendChild(backgroundElement);
+        }
+        backgroundElement.style.backgroundImage = `url(${customImage})`;
+        backgroundElement.style.backgroundColor = 'transparent';
+        console.log('🎨 Image personnalisée restaurée au démarrage');
+    } else if (defaultImage) {
+        // Appliquer l'image par défaut
+        applyBackground();
+    } else if (savedColor) {
+        // Appliquer la couleur sauvegardée
+        colorPicker.value = savedColor;
+        applyColorBackground(savedColor);
+    }
+});
+
+// Réinitialiser l'arrière-plan
+function resetBackground() {
+    const backgroundElement = document.getElementById('pageBackground');
+    if (backgroundElement) {
+        backgroundElement.remove();
+    }
+    
+    // Supprimer tous les types d'arrière-plan du localStorage
+    localStorage.removeItem('background_image');
+    localStorage.removeItem('background_color');
+    localStorage.removeItem('custom_background_image');
+    
+    // Réinitialiser le color picker
+    const colorPicker = document.getElementById('colorPicker');
+    if (colorPicker) {
+        colorPicker.value = '#ffffff';
+    }
+    
+    // Réinitialiser les variables d'image personnalisée
+    customImageData = null;
+    
+    // Masquer l'aperçu d'image personnalisée
+    document.getElementById('customImagePreview').classList.add('hidden');
+    
+    // Réinitialiser le file input
+    document.getElementById('customImageUpload').value = '';
+    
+    showNotification('Arrière-plan réinitialisé', 'info');
+    console.log('🎨 Arrière-plan réinitialisé (tous les types)');
+}
+
+// Charger l'arrière-plan sauvegardé au démarrage
+function loadSavedBackground() {
+    const savedBackground = localStorage.getItem('background_image');
+    if (savedBackground) {
+        const backgroundElement = document.createElement('div');
+        backgroundElement.id = 'pageBackground';
+        backgroundElement.className = 'background-page';
+        backgroundElement.style.backgroundImage = `url(${savedBackground})`;
+        document.body.appendChild(backgroundElement);
+        console.log('🎨 Arrière-plan chargé:', savedBackground);
+    }
+}
+
+// ===== SYSTÈME D'HISTORIQUE DES NOTES RÉCENTES =====
+
+// Ajouter une note à l'historique
+function addToRecentHistory(noteId, noteTitle, folderName) {
+    try {
+        // Récupérer l'historique existant
+        let recentNotes = JSON.parse(localStorage.getItem('recent_notes_history') || '[]');
+        
+        // Créer l'objet note
+        const noteData = {
+            id: noteId,
+            title: noteTitle,
+            folder: folderName,
+            opened_at: new Date().toISOString()
+        };
+        
+        // Supprimer la note si elle existe déjà dans l'historique
+        recentNotes = recentNotes.filter(note => note.id !== noteId);
+        
+        // Ajouter la note au début de la liste
+        recentNotes.unshift(noteData);
+        
+        // Garder seulement les 6 dernières notes
+        recentNotes = recentNotes.slice(0, 6);
+        
+        // Sauvegarder dans le localStorage
+        localStorage.setItem('recent_notes_history', JSON.stringify(recentNotes));
+        
+        // Mettre à jour l'affichage
+        updateRecentNotesDisplay();
+        
+        console.log('📝 Note ajoutée à l\'historique:', noteTitle);
+    } catch (error) {
+        console.error('❌ Erreur lors de l\'ajout à l\'historique:', error);
+    }
+}
+
+// Mettre à jour l'affichage des notes récentes
+function updateRecentNotesDisplay() {
+    try {
+        const recentNotesContainer = document.getElementById('recentNotes');
+        if (!recentNotesContainer) return;
+        
+        const recentNotes = JSON.parse(localStorage.getItem('recent_notes_history') || '[]');
+        
+        if (recentNotes.length === 0) {
+            recentNotesContainer.innerHTML = `
+                <div class="text-center py-8 text-gray-400">
+                    <i class="fas fa-clock text-3xl mb-2"></i>
+                    <p class="text-sm">Aucune note récente</p>
+                </div>
+            `;
+            return;
+        }
+        
+        recentNotesContainer.innerHTML = '';
+        
+        recentNotes.forEach((note, index) => {
+            const noteElement = document.createElement('div');
+            noteElement.className = 'bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-all cursor-pointer hover:border-blue-300 group';
+            
+            // Calculer le temps relatif
+            const openedTime = new Date(note.opened_at);
+            const now = new Date();
+            const diffInMinutes = Math.floor((now - openedTime) / (1000 * 60));
+            
+            let timeText = '';
+            if (diffInMinutes < 1) {
+                timeText = 'À l\'instant';
+            } else if (diffInMinutes < 60) {
+                timeText = `Il y a ${diffInMinutes} min`;
+            } else if (diffInMinutes < 1440) {
+                timeText = `Il y a ${Math.floor(diffInMinutes / 60)} h`;
+            } else {
+                timeText = `Il y a ${Math.floor(diffInMinutes / 1440)} j`;
+            }
+            
+            // Obtenir la couleur du dossier
+            const folderColor = getFolderColor(note.folder);
+            
+            noteElement.innerHTML = `
+                <div class="flex items-start justify-between">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center mb-1">
+                            <i class="fas fa-sticky-note ${folderColor.icon} mr-2 text-sm"></i>
+                            <span class="inline-block px-2 py-1 text-xs rounded-full ${folderColor.badge} mr-2">
+                                ${note.folder === 'general' ? 'Général' : note.folder}
+                            </span>
+                        </div>
+                        <h4 class="text-sm font-medium text-gray-800 truncate group-hover:text-blue-600 transition-colors">
+                            ${note.title}
+                        </h4>
+                        <p class="text-xs text-gray-500 mt-1">${timeText}</p>
+                    </div>
+                    <button onclick="removeFromRecentHistory('${note.id}', event)" class="ml-2 text-gray-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
+                        <i class="fas fa-times text-xs"></i>
+                    </button>
+                </div>
+            `;
+            
+            // Ajouter le gestionnaire de clic pour ouvrir la note
+            noteElement.addEventListener('click', function(e) {
+                // Ne pas ouvrir la note si on clique sur le bouton de suppression
+                if (!e.target.closest('button')) {
+                    openRecentNote(note.id);
+                }
+            });
+            
+            recentNotesContainer.appendChild(noteElement);
+        });
+        
+        console.log('📝 Affichage de l\'historique mis à jour:', recentNotes.length, 'notes');
+    } catch (error) {
+        console.error('❌ Erreur lors de la mise à jour de l\'affichage:', error);
+    }
+}
+
+// Obtenir la couleur d'un dossier
+function getFolderColor(folderId) {
+    if (folderId === 'general') {
+        try {
+            const savedColor = localStorage.getItem('general_folder_color');
+            if (savedColor) {
+                return JSON.parse(savedColor);
+            }
+        } catch (error) {
+            console.error('❌ Erreur lors du chargement de la couleur du dossier général:', error);
+        }
+        // Couleur par défaut
+        return {
+            name: "Bleu",
+            icon: "text-blue-500",
+            badge: "bg-blue-100 text-blue-800"
+        };
+    }
+    
+    // Chercher dans les dossiers personnalisés
+    try {
+        const folders = JSON.parse(localStorage.getItem('custom_folders') || '[]');
+        const folder = folders.find(f => f.id === folderId);
+        if (folder && folder.color) {
+            return folder.color;
+        }
+    } catch (error) {
+        console.error('❌ Erreur lors de la recherche du dossier:', error);
+    }
+    
+    // Couleur par défaut si non trouvé
+    return {
+        name: "Gris",
+        icon: "text-gray-500",
+        badge: "bg-gray-100 text-gray-800"
+    };
+}
+
+// Ouvrir une note récente
+function openRecentNote(noteId) {
+    // Ajouter à l'historique (déplacer au début)
+    const recentNotes = JSON.parse(localStorage.getItem('recent_notes_history') || '[]');
+    const note = recentNotes.find(n => n.id === noteId);
+    
+    if (note) {
+        addToRecentHistory(note.id, note.title, note.folder);
+    }
+    
+    // Rediriger vers l'éditeur avec l'ID de la note
+    window.location.href = `{{ url_for('note_editor') }}?note_id=${noteId}`;
+}
+
+// Supprimer une note de l'historique
+function removeFromRecentHistory(noteId, event) {
+    event.stopPropagation();
+    
+    try {
+        let recentNotes = JSON.parse(localStorage.getItem('recent_notes_history') || '[]');
+        recentNotes = recentNotes.filter(note => note.id !== noteId);
+        
+        localStorage.setItem('recent_notes_history', JSON.stringify(recentNotes));
+        updateRecentNotesDisplay();
+        
+        showNotification('Note supprimée de l\'historique', 'info');
+        console.log('🗑️ Note supprimée de l\'historique:', noteId);
+    } catch (error) {
+        console.error('❌ Erreur lors de la suppression de l\'historique:', error);
+    }
+}
+
+// Initialiser l'historique au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    // Charger l'historique des notes récentes
+    updateRecentNotesDisplay();
+});
+</script>
+{% endblock %}

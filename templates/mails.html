@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Mails - SOS Thomas{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex justify-between items-center mb-8">
+        <h2 class="text-3xl font-bold text-gray-800">Mail inter compte</h2>
+        <a href="{{ url_for('dashboard') }}" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+            <i class="fas fa-arrow-left mr-2"></i>Retour
+        </a>
+    </div>
+    
+    <div class="bg-white rounded-xl shadow-md p-6">
+        {% if data.accounts %}
+            <form method="POST" action="{{ url_for('send_mail') }}" class="mb-6">
+                {{ form.hidden_tag() }}
+                <div class="space-y-4">
+                    <div class="flex flex-wrap gap-4">
+                        {{ form.from_account(class="border rounded px-3 py-2") }}
+                        {{ form.to_account(class="border rounded px-3 py-2") }}
+                    </div>
+                    {{ form.subject(class="border rounded px-3 py-2 w-full") }}
+                    {{ form.content(class="border rounded px-3 py-2 w-full h-32") }}
+                    <button type="submit" class="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600">
+                        <i class="fas fa-paper-plane mr-2"></i>Envoyer
+                    </button>
+                </div>
+            </form>
+        {% else %}
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <p class="text-yellow-800">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    Veuillez d'abord ajouter des comptes pour pouvoir envoyer des mails.
+                </p>
+            </div>
+        {% endif %}
+        
+        <div class="space-y-4">
+            {% for mail in data.mails %}
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-800">{{ mail.subject }}</h4>
+                            <p class="text-sm text-gray-600 mb-2">
+                                <i class="fas fa-user mr-1"></i>{{ mail.from }} → 
+                                <i class="fas fa-user ml-2 mr-1"></i>{{ mail.to }}
+                            </p>
+                            <p class="text-sm text-gray-700">{{ mail.content }}</p>
+                            <p class="text-xs text-gray-500 mt-2">
+                                {{ mail.date[:10] }} {{ mail.date[11:16] if mail.date|length > 16 else '' }}
+                            </p>
+                        </div>
+                        <a href="{{ url_for('delete_item', item_type='mails', item_id=mail.id) }}" 
+                           class="text-red-500 hover:text-red-700 ml-4">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    </div>
+                </div>
+            {% else %}
+                <p class="text-gray-500 text-center py-8">Aucun mail envoyé</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

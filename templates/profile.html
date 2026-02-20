@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+
+{% block title %}Profil - SOS Thomas{% endblock %}
+
+{% block content %}
+<!-- Dashboard Content -->
+<div class="dashboard-content">
+    <div class="dashboard-header">
+        <h1 class="dashboard-title">Mon Profil</h1>
+        <p class="dashboard-subtitle">Gérez vos informations personnelles et vos services</p>
+    </div>
+    
+    <!-- Contenu du profil -->
+    <div class="max-w-6xl mx-auto">
+        <!-- En-tête du profil -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-6">
+                <!-- Avatar -->
+                <div class="relative">
+                    {% if profile.avatar %}
+                        <img src="{{ url_for('static', filename='uploads/' + profile.avatar) }}" 
+                             alt="Avatar" class="w-24 h-24 rounded-full object-cover border-4 border-blue-100">
+                    {% else %}
+                        <div class="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-3xl font-bold">
+                            {{ user.username[:2].upper() }}
+                        </div>
+                    {% endif %}
+                    <button onclick="document.getElementById('avatar-upload').click()" 
+                            class="absolute bottom-0 right-0 bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition-colors">
+                        <i class="fas fa-camera text-xs"></i>
+                    </button>
+                    <form id="avatar-form" method="POST" action="{{ url_for('upload_avatar') }}" enctype="multipart/form-data" class="hidden">
+                        <input type="file" id="avatar-upload" name="avatar" accept="image/*" onchange="this.form.submit()">
+                    </form>
+                </div>
+                
+                <!-- Informations principales -->
+                <div class="flex-1">
+                    <h1 class="text-2xl font-bold text-gray-800">
+                        {{ profile.first_name or '' }} {{ profile.last_name or user.username }}
+                    </h1>
+                    <p class="text-gray-600">@{{ user.username }}</p>
+                    {% if profile.bio %}
+                        <p class="text-gray-700 mt-2">{{ profile.bio }}</p>
+                    {% endif %}
+                    <div class="flex items-center space-x-4 mt-3 text-sm text-gray-500">
+                        {% if profile.location %}
+                            <span><i class="fas fa-map-marker-alt mr-1"></i>{{ profile.location }}</span>
+                        {% endif %}
+                        {% if profile.birth_date %}
+                            <span><i class="fas fa-birthday-cake mr-1"></i>{{ profile.birth_date[:10] }}</span>
+                        {% endif %}
+                        <span><i class="fas fa-calendar mr-1"></i>Membre depuis {{ user.created_at[:10] }}</span>
+                    </div>
+                </div>
+                
+                <!-- Bouton de déconnexion -->
+                <div class="flex flex-col items-end space-y-2">
+                    <a href="{{ url_for('logout') }}" 
+                       class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Se déconnecter</span>
+                    </a>
+                    <span class="text-xs text-gray-500">Version 1.0</span>
+                </div>
+            </div>
+        </div>
+
+    <!-- Onglets de navigation -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
+        <div class="border-b border-gray-200">
+            <nav class="flex space-x-8 px-6" aria-label="Tabs">
+                <button onclick="showTab('personal')" class="tab-btn py-4 px-1 border-b-2 border-blue-500 text-blue-600 font-medium" data-tab="personal">
+                    Informations personnelles
+                </button>
+                <button onclick="showTab('contact')" class="tab-btn py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" data-tab="contact">
+                    Informations de contact
+                </button>
+                <button onclick="showTab('account')" class="tab-btn py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" data-tab="account">
+                    Paramètres du compte
+                </button>
+                <button onclick="showTab('preferences')" class="tab-btn py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" data-tab="preferences">
+                    Préférences
+                </button>
+                <button onclick="showTab('services')" class="tab-btn py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" data-tab="services">
+                    Services
+                </button>
+            </nav>
+        </div>
+
+        <!-- Contenu des onglets -->
+        <div class="p-6">
+            <!-- Onglet Informations personnelles -->
+            <div id="personal-tab" class="tab-content">
+                <form method="POST" action="{{ url_for('update_profile') }}" class="space-y-6">
+                    {{ profile_form.hidden_tag() }}
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Prénom</label>
+                            {{ profile_form.first_name(class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500") }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nom</label>
+                            {{ profile_form.last_name(class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500") }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Bio / Description courte</label>
+                        {{ profile_form.bio(class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", rows="3", placeholder="Parlez-nous de vous...") }}
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Date de naissance</label>
+                            {{ profile_form.birth_date(class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500") }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Localisation</label>
+                            {{ profile_form.location(class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", placeholder="Paris, France") }}
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                            <i class="fas fa-save mr-2"></i>Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Onglet Informations de contact -->
+            <div id="contact-tab" class="tab-content hidden">
+                <form method="POST" action="{{ url_for('update_profile') }}" class="space-y-6">
+                    {{ profile_form.hidden_tag() }}
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Adresse e-mail</label>
+                        <input type="email" value="{{ user.email }}" disabled class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                        <p class="text-xs text-gray-500 mt-1">L'adresse e-mail ne peut pas être modifiée</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Numéro de téléphone</label>
+                        {{ profile_form.phone(class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", placeholder="+33 6 12 34 56 78") }}
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Adresse postale</label>
+                        {{ profile_form.address(class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", rows="3", placeholder="123 rue de la République\n75001 Paris\nFrance") }}
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                            <i class="fas fa-save mr-2"></i>Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Onglet Paramètres du compte -->
+            <div id="account-tab" class="tab-content hidden">
+                <div class="space-y-8">
+                    <!-- Changer le mot de passe -->
+                    <div class="border-b border-gray-200 pb-8">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Changer le mot de passe</h3>
+                        <form method="POST" action="{{ url_for('change_password') }}" class="space-y-4">
+                            {{ password_form.hidden_tag() }}
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe actuel</label>
+                                {{ password_form.current_password(class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", type="password") }}
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Nouveau mot de passe</label>
+                                    {{ password_form.new_password(class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", type="password") }}
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Confirmer le mot de passe</label>
+                                    {{ password_form.confirm_password(class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", type="password") }}
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end">
+                                <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                                    <i class="fas fa-key mr-2"></i>Changer le mot de passe
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Gestion des connexions -->
+                    <div class="border-b border-gray-200 pb-8">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Gestion des connexions</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                <div class="flex items-center space-x-3">
+                                    <i class="fas fa-desktop text-gray-600"></i>
+                                    <div>
+                                        <p class="font-medium">Navigateur actuel</p>
+                                        <p class="text-sm text-gray-500">IP: {{ request.remote_addr }}</p>
+                                    </div>
+                                </div>
+                                <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Actif</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Suppression du compte -->
+                    <div>
+                        <h3 class="text-lg font-medium text-red-600 mb-4">Suppression du compte</h3>
+                        <p class="text-gray-600 mb-4">La suppression de votre compte est irréversible. Toutes vos données seront perdues.</p>
+                        <button class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition-colors">
+                            <i class="fas fa-trash mr-2"></i>Supprimer mon compte
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Onglet Préférences -->
+            <div id="preferences-tab" class="tab-content hidden">
+                <form method="POST" action="{{ url_for('update_preferences') }}" class="space-y-6">
+                    {{ preferences_form.hidden_tag() }}
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Langue</label>
+                            {{ preferences_form.language(class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500") }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Thème</label>
+                            {{ preferences_form.theme(class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500") }}
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-200 pt-6">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Paramètres d'accessibilité</h3>
+                        <div class="space-y-4">
+                            <label class="flex items-center">
+                                <input type="checkbox" class="mr-3">
+                                <span class="text-sm text-gray-700">Mode contraste élevé</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="mr-3">
+                                <span class="text-sm text-gray-700">Police plus grande</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="mr-3">
+                                <span class="text-sm text-gray-700">Réduire les animations</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                            <i class="fas fa-save mr-2"></i>Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Onglet Services -->
+            <div id="services-tab" class="tab-content hidden">
+                <div class="space-y-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Informations spécifiques au service</h3>
+                    
+                    <!-- CV -->
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <h4 class="font-medium text-gray-800 mb-3">
+                            <i class="fas fa-file-alt mr-2"></i>CV / Compétences
+                        </h4>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Uploader votre CV</label>
+                                <input type="file" accept=".pdf,.doc,.docx" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Compétences principales</label>
+                                <textarea class="w-full px-4 py-2 border border-gray-300 rounded-lg" rows="3" placeholder="Développeur web, Python, JavaScript..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Portfolio -->
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <h4 class="font-medium text-gray-800 mb-3">
+                            <i class="fas fa-briefcase mr-2"></i>Portfolio
+                        </h4>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Site web / Portfolio</label>
+                                <input type="url" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="https://monportfolio.com">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">LinkedIn</label>
+                                <input type="url" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="https://linkedin.com/in/monprofil">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">GitHub</label>
+                                <input type="url" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="https://github.com/monusername">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Spotify -->
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <h4 class="font-medium text-gray-800 mb-3">
+                            <i class="fab fa-spotify mr-2 text-green-600"></i>Intégration Spotify
+                        </h4>
+                        <div class="space-y-4">
+                            <div class="bg-blue-50 p-3 rounded-lg">
+                                <p class="text-sm text-blue-800">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Configurez vos identifiants Spotify Developer pour contrôler votre musique depuis l'application.
+                                </p>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Spotify Client ID 
+                                    <a href="https://developer.spotify.com/dashboard" target="_blank" class="text-blue-600 hover:text-blue-800 text-xs ml-2">
+                                        <i class="fas fa-external-link-alt"></i> Obtenir depuis Spotify Developer
+                                    </a>
+                                </label>
+                                {{ profile_form.spotify_client_id(class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", placeholder="votre_client_id_spotify") }}
+                                {% if profile_form.spotify_client_id.errors %}
+                                    <p class="mt-1 text-sm text-red-600">{{ profile_form.spotify_client_id.errors[0] }}</p>
+                                {% endif %}
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Spotify Client Secret
+                                    <span class="text-xs text-gray-500 ml-2">(gardé confidentiel)</span>
+                                </label>
+                                {{ profile_form.spotify_client_secret(class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", type="password", placeholder="votre_client_secret_spotify") }}
+                                {% if profile_form.spotify_client_secret.errors %}
+                                    <p class="mt-1 text-sm text-red-600">{{ profile_form.spotify_client_secret.errors[0] }}</p>
+                                {% endif %}
+                            </div>
+                            
+                            {% if profile.spotify_connected %}
+                            <div class="bg-green-50 p-3 rounded-lg">
+                                <p class="text-sm text-green-800">
+                                    <i class="fas fa-check-circle mr-1"></i>
+                                    Connecté à Spotify - Vous pouvez utiliser le contrôleur de musique
+                                </p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                            <i class="fas fa-save mr-2"></i>Enregistrer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showTab(tabName) {
+    // Masquer tous les contenus
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.add('hidden');
+    });
+    
+    // Réinitialiser tous les boutons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('border-blue-500', 'text-blue-600');
+        btn.classList.add('border-transparent', 'text-gray-500');
+    });
+    
+    // Afficher le contenu sélectionné
+    document.getElementById(tabName + '-tab').classList.remove('hidden');
+    
+    // Mettre en surbrillance le bouton sélectionné
+    const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+    activeBtn.classList.remove('border-transparent', 'text-gray-500');
+    activeBtn.classList.add('border-blue-500', 'text-blue-600');
+}
+
+// Messages flash
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            {% if category == 'success' %}
+                showNotification('{{ message }}', 'success');
+            {% elif category == 'error' %}
+                showNotification('{{ message }}', 'error');
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+        type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+    }`;
+    notification.innerHTML = `
+        <div class="flex items-center">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} mr-2"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 5000);
+}
+</script>
+    </div>
+</div>
+<!-- End Dashboard Content -->
+{% endblock %}

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - SOS Thomas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #87CEEB 0%, #FFE4B5 20%, #FFB6C1 40%, #DDA0DD 60%, #98D8E8 80%, #87CEEB 100%);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen flex items-center justify-center relative overflow-hidden">
+    <!-- Mountain SVG decoration -->
+    <div class="absolute inset-0 flex items-end justify-center pointer-events-none">
+        <svg width="100%" height="60%" viewBox="0 0 1200 400" class="opacity-20">
+            <path d="M0 400 L150 200 L300 280 L450 150 L600 250 L750 180 L900 300 L1050 220 L1200 350 L1200 400 Z" 
+                  fill="white" opacity="0.8"/>
+            <path d="M0 400 L200 250 L400 320 L600 200 L800 280 L1000 240 L1200 380 L1200 400 Z" 
+                  fill="white" opacity="0.6"/>
+            <path d="M0 400 L100 350 L250 380 L400 340 L550 370 L700 350 L850 380 L1000 360 L1200 390 L1200 400 Z" 
+                  fill="white" opacity="0.4"/>
+        </svg>
+    </div>
+    
+    <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md relative z-10">
+        <!-- Logo et titre -->
+        <div class="text-center mb-8">
+            <div class="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden">
+                <img src="{{ url_for('static', filename='uploads/Logo SOS THOMAS.png') }}" alt="SOS Thomas" class="w-full h-full object-cover">
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800">SOS Thomas</h1>
+            <p class="text-gray-600 mt-2">Connectez-vous à votre espace</p>
+        </div>
+
+        <!-- Messages flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="mb-4 p-4 rounded-lg {% if category == 'error' %}bg-red-100 text-red-700{% elif category == 'success' %}bg-green-100 text-green-700{% else %}bg-blue-100 text-blue-700{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Formulaire de connexion -->
+        <form method="POST" class="space-y-6">
+            {{ form.hidden_tag() }}
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-user mr-2"></i>{{ form.username.label.text }}
+                </label>
+                {{ form.username(class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors", placeholder="Nom d'utilisateur ou Email") }}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-lock mr-2"></i>{{ form.password.label.text }}
+                </label>
+                {{ form.password(class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors", placeholder="Mot de passe") }}
+            </div>
+
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <input type="checkbox" id="remember" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="remember" class="ml-2 block text-sm text-gray-700">
+                        Se souvenir de moi
+                    </label>
+                </div>
+                <a href="#" class="text-sm text-blue-600 hover:text-blue-500">
+                    Mot de passe oublié ?
+                </a>
+            </div>
+
+            <button type="submit" class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                <i class="fas fa-sign-in-alt mr-2"></i>Se connecter
+            </button>
+        </form>
+
+        <!-- Lien vers inscription -->
+        <div class="mt-6 text-center">
+            <p class="text-gray-600">
+                Pas encore de compte ?
+                <a href="{{ url_for('register') }}" class="text-blue-600 hover:text-blue-500 font-medium">
+                    Créer un compte
+                </a>
+            </p>
+        </div>
+
+        <!-- Première connexion -->
+        <div class="mt-4 text-center">
+            <a href="{{ url_for('first_connection') }}" class="text-sm text-gray-500 hover:text-gray-700">
+                <i class="fas fa-magic mr-1"></i>Première connexion ?
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Gestion de la session "se souvenir de moi"
+        document.getElementById('remember').addEventListener('change', function() {
+            if (this.checked) {
+                // Stocker la préférence dans localStorage
+                localStorage.setItem('rememberMe', 'true');
+            } else {
+                localStorage.removeItem('rememberMe');
+            }
+        });
+
+        // Restaurer la préférence au chargement
+        window.addEventListener('load', function() {
+            const rememberMe = localStorage.getItem('rememberMe');
+            if (rememberMe === 'true') {
+                document.getElementById('remember').checked = true;
+            }
+        });
+    </script>
+</body>
+</html>

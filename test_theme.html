@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Thème - SOS Thomas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --secondary-color: #10b981;
+            --accent-color: #f59e0b;
+        }
+        
+        .primary-bg { background-color: var(--primary-color); }
+        .secondary-bg { background-color: var(--secondary-color); }
+        .accent-bg { background-color: var(--accent-color); }
+        
+        .icon-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .icon-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .timer-display {
+            font-family: 'Courier New', monospace;
+            font-size: 1.5rem;
+        }
+        
+        .flash-messages {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 50;
+        }
+        
+        .flash-message {
+            background-color: #10b981;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        /* Header Styles */
+        .header {
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1rem 2rem;
+            position: fixed;
+            top: 0;
+            left: 280px;
+            right: 0;
+            z-index: 40;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .search-bar {
+            flex: 1;
+            max-width: 400px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8fafc;
+            font-size: 0.875rem;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            font-size: 1rem;
+            pointer-events: none;
+        }
+
+        .search-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .icon-button {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .icon-button:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        .dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            min-width: 200px;
+            z-index: 1000;
+            display: none;
+            margin-top: 0.5rem;
+        }
+
+        .dropdown.show {
+            display: block;
+        }
+
+        .theme-dropdown {
+            padding: 1rem;
+        }
+
+        .theme-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.75rem;
+        }
+
+        .theme-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .theme-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .theme-item:hover {
+            background: #f3f4f6;
+        }
+
+        .theme-preview {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .theme-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        .theme-info {
+            flex: 1;
+        }
+
+        .theme-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .theme-description {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            background: #ffffff;
+            border-right: 1px solid #e2e8f0;
+            z-index: 50;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .user-profile {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .user-details h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0;
+        }
+
+        .user-details p {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin: 0;
+        }
+
+        .nav-menu {
+            padding: 1rem 0;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            color: #6b7280;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .nav-item:hover {
+            background: #f8fafc;
+            color: #374151;
+        }
+
+        .nav-item.active {
+            background: #f1f5f9;
+            color: #1e40af;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 280px;
+            padding-top: 80px;
+            min-height: 100vh;
+        }
+
+        .dashboard-content {
+            padding: 2rem;
+            background: #f8fafc;
+        }
+
+        .widget {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .widget:hover {
+            border-color: #cbd5e1;
+        }
+
+        .widget-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+
+        .widget-menu {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .widget-menu:hover {
+            background: #f1f5f9;
+        }
+
+        .widget-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            min-width: 150px;
+            z-index: 1000;
+            display: none;
+            margin-top: 0.5rem;
+        }
+
+        .widget-dropdown.show {
+            display: block;
+        }
+
+        .widget-dropdown-item {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            color: #374151;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .widget-dropdown-item:hover {
+            background: #f3f4f6;
+        }
+
+        .task-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #cbd5e1;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .task-checkbox.checked {
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
+            border-color: transparent;
+        }
+
+        .task-checkbox.checked::after {
+            content: '✓';
+            color: white;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.75rem;
+        }
+
+        .task-text {
+            color: #374151;
+            font-weight: 500;
+        }
+
+        .task-text.completed {
+            color: #9ca3af;
+            text-decoration: line-through;
+        }
+
+        .task-priority {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6b7280;
+        }
+
+        .chart-bar {
+            background: linear-gradient(to top, #3b82f6, #1e40af);
+            border-radius: 4px 4px 0 0;
+        }
+
+        .activity-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .activity-item {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .activity-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .activity-time {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <a href="#" class="logo">
+                <span>🏠</span>
+                <span>SOS Thomas</span>
+            </a>
+        </div>
+        
+        <div class="user-profile">
+            <div class="user-details">
+                <h3>Thomas Dupont</h3>
+                <p>thomas.dupont@email.com</p>
+            </div>
+        </div>
+        
+        <nav class="nav-menu">
+            <a href="#" class="nav-item active">
+                <span>📊</span>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" class="nav-item">
+                <span>📅</span>
+                <span>Agenda</span>
+            </a>
+            <a href="#" class="nav-item">
+                <span>📝</span>
+                <span>Tâches</span>
+            </a>
+            <a href="#" class="nav-item">
+                <span>🚀</span>
+                <span>Projets</span>
+            </a>
+            <a href="#" class="nav-item">
+                <span>📄</span>
+                <span>Notes</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="search-bar">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" class="search-input" placeholder="Rechercher...">
+            <div class="search-suggestions" id="search-suggestions"></div>
+        </div>
+        
+        <div class="header-actions">
+            <div class="icon-button" onclick="toggleThemeMenu()">
+                🎨
+                <div class="dropdown theme-dropdown" id="theme-dropdown">
+                    <div class="theme-title">Thèmes</div>
+                    <div class="theme-list">
+                        <div class="theme-item" onclick="changeTheme('reve')">
+                            <div class="theme-preview">
+                                <div class="theme-color" style="background: #fffbeb;"></div>
+                                <div class="theme-color" style="background: #fef2f2;"></div>
+                            </div>
+                            <div class="theme-info">
+                                <div class="theme-name">Rêve</div>
+                                <div class="theme-description">Pastel et doux</div>
+                            </div>
+                        </div>
+                        <div class="theme-item" onclick="changeTheme('serieux')">
+                            <div class="theme-preview">
+                                <div class="theme-color" style="background: #1e3a8a;"></div>
+                                <div class="theme-color" style="background: #f8fafc;"></div>
+                            </div>
+                            <div class="theme-info">
+                                <div class="theme-name">Sérieux</div>
+                                <div class="theme-description">Professionnel et sobre</div>
+                            </div>
+                        </div>
+                        <div class="theme-item" onclick="changeTheme('nature')">
+                            <div class="theme-preview">
+                                <div class="theme-color" style="background: #f0fdf4;"></div>
+                                <div class="theme-color" style="background: #fef3c7;"></div>
+                            </div>
+                            <div class="theme-info">
+                                <div class="theme-name">Nature</div>
+                                <div class="theme-description">Vert et apaisant</div>
+                            </div>
+                        </div>
+                        <div class="theme-item" onclick="changeTheme('ocean')">
+                            <div class="theme-preview">
+                                <div class="theme-color" style="background: #0891b2;"></div>
+                                <div class="theme-color" style="background: #ecfeff;"></div>
+                            </div>
+                            <div class="theme-info">
+                                <div class="theme-name">Océan</div>
+                                <div class="theme-description">Bleu marin</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="icon-button">
+                🔔
+            </div>
+            <div class="icon-button">
+                👤
+            </div>
+            <div class="timer-display" id="timer">00:00:00</div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="dashboard-content">
+            <h1 class="text-2xl font-bold text-gray-800 mb-6">Test des Thèmes</h1>
+            
+            <div class="widget">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="widget-title">Test des Widgets</h3>
+                    <div class="widget-menu" onclick="toggleWidgetMenu(this)">⋮</div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="flex items-center gap-3">
+                        <div class="task-checkbox" onclick="this.classList.toggle('checked')"></div>
+                        <div class="task-text">Test de tâche 1</div>
+                        <div class="task-priority">moyenne</div>
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                        <div class="task-checkbox checked" onclick="this.classList.toggle('checked')"></div>
+                        <div class="task-text completed">Test de tâche 2 (terminée)</div>
+                        <div class="task-priority">haute</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="widget">
+                <h3 class="widget-title mb-4">Test des Couleurs</h3>
+                <div class="grid grid-cols-4 gap-4">
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-blue-500 rounded-lg mx-auto mb-2"></div>
+                        <p class="text-sm text-gray-600">Bleu</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-green-500 rounded-lg mx-auto mb-2"></div>
+                        <p class="text-sm text-gray-600">Vert</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-yellow-500 rounded-lg mx-auto mb-2"></div>
+                        <p class="text-sm text-gray-600">Jaune</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-red-500 rounded-lg mx-auto mb-2"></div>
+                        <p class="text-sm text-gray-600">Rouge</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="widget">
+                <h3 class="widget-title mb-4">Test des Formulaires</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Champ de texte</label>
+                        <input type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Entrez du texte...">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Menu déroulant</label>
+                        <select class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option>Option 1</option>
+                            <option>Option 2</option>
+                            <option>Option 3</option>
+                        </select>
+                    </div>
+                    <button class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                        Bouton de test
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Timer functionality
+        let seconds = 0;
+        setInterval(() => {
+            seconds++;
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            document.getElementById('timer').textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }, 1000);
+
+        // Theme functionality
+        function toggleThemeMenu() {
+            const dropdown = document.getElementById('theme-dropdown');
+            const isOpen = dropdown.classList.contains('show');
+            
+            if (isOpen) {
+                dropdown.classList.remove('show');
+            } else {
+                dropdown.classList.add('show');
+            }
+        }
+
+        function changeTheme(themeName) {
+            const themes = {
+                reve: {
+                    sidebar: '#fffbeb',
+                    sidebarBorder: '#fef3c7',
+                    sidebarHeaderBorder: '#fef3c7',
+                    sidebarUserBorder: '#fef3c7',
+                    sidebarHover: '#fef3c7',
+                    dashboardBg: '#fef2f2',
+                    widgetBorder: '#fce4ec',
+                    widgetHoverBorder: '#f9a8d4',
+                    widgetTitle: '#be185d',
+                    widgetMenuBg: '#fce4ec',
+                    widgetMenuHover: '#fbcfe8',
+                    taskCheckbox: '#f9a8d4',
+                    taskCheckboxChecked: 'linear-gradient(135deg, #f9a8d4, #ec4899)',
+                    chartBar: 'linear-gradient(to top, #f9a8d4, #ec4899)',
+                    activityIcon1: '#fce4ec',
+                    activityIcon1Color: '#ec4899',
+                    activityIcon2: '#fbcfe8',
+                    activityIcon2Color: '#be185d',
+                    textPrimary: '#1e293b',
+                    textSecondary: '#475569',
+                    textMuted: '#64748b',
+                    textDark: '#0f172a',
+                    headerBg: '#ffffff',
+                    headerBorder: '#e2e8f0',
+                    searchBg: '#f8fafc',
+                    searchBorder: '#e2e8f0',
+                    buttonBg: '#ffffff',
+                    buttonBorder: '#e2e8f0',
+                    buttonHoverBg: '#f8fafc'
+                },
+                serieux: {
+                    sidebar: '#1e3a8a',
+                    sidebarBorder: '#1e40af',
+                    sidebarHeaderBorder: '#1e40af',
+                    sidebarUserBorder: '#1e40af',
+                    sidebarHover: '#1e40af',
+                    dashboardBg: '#f8fafc',
+                    widgetBorder: '#e2e8f0',
+                    widgetHoverBorder: '#cbd5e1',
+                    widgetTitle: '#1e293b',
+                    widgetMenuBg: '#f1f5f9',
+                    widgetMenuHover: '#e2e8f0',
+                    taskCheckbox: '#cbd5e1',
+                    taskCheckboxChecked: 'linear-gradient(135deg, #3b82f6, #1e40af)',
+                    chartBar: 'linear-gradient(to top, #3b82f6, #1e40af)',
+                    activityIcon1: '#eff6ff',
+                    activityIcon1Color: '#3b82f6',
+                    activityIcon2: '#dbeafe',
+                    activityIcon2Color: '#2563eb',
+                    textPrimary: '#0f172a',
+                    textSecondary: '#334155',
+                    textMuted: '#64748b',
+                    textDark: '#020617',
+                    headerBg: '#ffffff',
+                    headerBorder: '#e2e8f0',
+                    searchBg: '#f8fafc',
+                    searchBorder: '#e2e8f0',
+                    buttonBg: '#ffffff',
+                    buttonBorder: '#e2e8f0',
+                    buttonHoverBg: '#f1f5f9'
+                },
+                nature: {
+                    sidebar: '#f0fdf4',
+                    sidebarBorder: '#dcfce7',
+                    sidebarHeaderBorder: '#dcfce7',
+                    sidebarUserBorder: '#dcfce7',
+                    sidebarHover: '#dcfce7',
+                    dashboardBg: '#fef3c7',
+                    widgetBorder: '#dcfce7',
+                    widgetHoverBorder: '#bbf7d0',
+                    widgetTitle: '#166534',
+                    widgetMenuBg: '#dcfce7',
+                    widgetMenuHover: '#bbf7d0',
+                    taskCheckbox: '#bbf7d0',
+                    taskCheckboxChecked: 'linear-gradient(135deg, #10b981, #059669)',
+                    chartBar: 'linear-gradient(to top, #10b981, #059669)',
+                    activityIcon1: '#dcfce7',
+                    activityIcon1Color: '#10b981',
+                    activityIcon2: '#bbf7d0',
+                    activityIcon2Color: '#059669',
+                    textPrimary: '#0f172a',
+                    textSecondary: '#1e293b',
+                    textMuted: '#475569',
+                    textDark: '#020617',
+                    headerBg: '#ffffff',
+                    headerBorder: '#dcfce7',
+                    searchBg: '#f0fdf4',
+                    searchBorder: '#dcfce7',
+                    buttonBg: '#ffffff',
+                    buttonBorder: '#dcfce7',
+                    buttonHoverBg: '#f0fdf4'
+                },
+                ocean: {
+                    sidebar: '#0891b2',
+                    sidebarBorder: '#0e7490',
+                    sidebarHeaderBorder: '#0e7490',
+                    sidebarUserBorder: '#0e7490',
+                    sidebarHover: '#0e7490',
+                    dashboardBg: '#ecfeff',
+                    widgetBorder: '#cffafe',
+                    widgetHoverBorder: '#a5f3fc',
+                    widgetTitle: '#164e63',
+                    widgetMenuBg: '#cffafe',
+                    widgetMenuHover: '#a5f3fc',
+                    taskCheckbox: '#a5f3fc',
+                    taskCheckboxChecked: 'linear-gradient(135deg, #06b6d4, #0891b2)',
+                    chartBar: 'linear-gradient(to top, #06b6d4, #0891b2)',
+                    activityIcon1: '#cffafe',
+                    activityIcon1Color: '#06b6d4',
+                    activityIcon2: '#a5f3fc',
+                    activityIcon2Color: '#0891b2',
+                    textPrimary: '#0f172a',
+                    textSecondary: '#1e293b',
+                    textMuted: '#475569',
+                    textDark: '#020617',
+                    headerBg: '#ffffff',
+                    headerBorder: '#cffafe',
+                    searchBg: '#ecfeff',
+                    searchBorder: '#cffafe',
+                    buttonBg: '#ffffff',
+                    buttonBorder: '#cffafe',
+                    buttonHoverBg: '#ecfeff'
+                }
+            };
+            
+            const theme = themes[themeName];
+            if (!theme) return;
+            
+            // Apply theme colors
+            applyThemeColors(theme);
+            
+            // Save theme preference
+            localStorage.setItem('selectedTheme', themeName);
+            
+            // Close dropdown
+            document.getElementById('theme-dropdown').classList.remove('show');
+        }
+
+        function applyThemeColors(theme) {
+            // Create or update theme CSS
+            let themeStyle = document.getElementById('theme-style');
+            if (!themeStyle) {
+                themeStyle = document.createElement('style');
+                themeStyle.id = 'theme-style';
+                document.head.appendChild(themeStyle);
+            }
+            
+            themeStyle.textContent = `
+                .sidebar { background: ${theme.sidebar} !important; }
+                .sidebar { border-right-color: ${theme.sidebarBorder} !important; }
+                .sidebar-header { border-bottom-color: ${theme.sidebarHeaderBorder} !important; }
+                .user-profile { border-bottom-color: ${theme.sidebarUserBorder} !important; }
+                .nav-item:hover { background: ${theme.sidebarHover} !important; }
+                .dashboard-content { background: ${theme.dashboardBg} !important; }
+                .widget { border-color: ${theme.widgetBorder} !important; }
+                .widget:hover { border-color: ${theme.widgetHoverBorder} !important; }
+                .widget-title { color: ${theme.widgetTitle} !important; }
+                .widget-menu { background: ${theme.widgetMenuBg} !important; }
+                .widget-menu:hover { background: ${theme.widgetMenuHover} !important; }
+                .task-checkbox { border-color: ${theme.taskCheckbox} !important; }
+                .task-checkbox.checked { 
+                    background: ${theme.taskCheckboxChecked} !important; 
+                    border-color: transparent !important;
+                }
+                .chart-bar { background: ${theme.chartBar} !important; }
+                
+                /* Sidebar text colors */
+                .logo { color: ${theme.sidebar === '#0f172a' || theme.sidebar === '#1e3a8a' || theme.sidebar === '#0891b2' ? (theme.sidebar === '#0891b2' ? '#ffffff' : '#cbd5e1') : theme.textDark} !important; font-weight: 700 !important; }
+                .user-details h3 { color: ${theme.sidebar === '#0f172a' || theme.sidebar === '#1e3a8a' || theme.sidebar === '#0891b2' ? (theme.sidebar === '#0891b2' ? '#ffffff' : '#cbd5e1') : theme.textDark} !important; font-weight: 600 !important; }
+                .user-details p { color: ${theme.sidebar === '#0f172a' || theme.sidebar === '#1e3a8a' || theme.sidebar === '#0891b2' ? (theme.sidebar === '#0891b2' ? '#f8fafc' : '#64748b') : theme.textSecondary} !important; }
+                .nav-item { color: ${theme.sidebar === '#0f172a' || theme.sidebar === '#1e3a8a' || theme.sidebar === '#0891b2' ? (theme.sidebar === '#0891b2' ? '#f8fafc' : '#64748b') : theme.textSecondary} !important; font-weight: 500 !important; }
+                .nav-item.active { color: ${theme.sidebar === '#0f172a' || theme.sidebar === '#1e3a8a' || theme.sidebar === '#0891b2' ? (theme.sidebar === '#0891b2' ? '#374151' : '#cbd5e1') : theme.textDark} !important; font-weight: 600 !important; }
+                .nav-item:hover { color: ${theme.sidebar === '#0f172a' || theme.sidebar === '#1e3a8a' || theme.sidebar === '#0891b2' ? (theme.sidebar === '#0891b2' ? '#ffffff' : '#cbd5e1') : theme.textDark} !important; }
+                
+                /* Dashboard and widget text colors */
+                .dashboard-title { color: ${theme.textDark} !important; font-weight: 700 !important; }
+                .dashboard-subtitle { color: ${theme.textSecondary} !important; }
+                .stat-label { color: ${theme.textSecondary} !important; font-weight: 500 !important; }
+                .stat-change { color: ${theme.textSecondary} !important; }
+                .stat-value { color: ${theme.textDark} !important; font-weight: 700 !important; }
+                .task-text { color: ${theme.textPrimary} !important; font-weight: 500 !important; }
+                .task-text.completed { color: ${theme.textMuted} !important; }
+                .task-priority { color: ${theme.textSecondary} !important; font-weight: 600 !important; }
+                .activity-title { color: ${theme.textPrimary} !important; font-weight: 600 !important; }
+                .activity-time { color: ${theme.textMuted} !important; font-weight: 500 !important; }
+                .search-input { color: ${theme.textDark} !important; font-weight: 500 !important; }
+                .search-input::placeholder { color: ${theme.textMuted} !important; }
+                
+                /* Header elements */
+                .header { background: ${theme.headerBg} !important; border-bottom-color: ${theme.headerBorder} !important; }
+                .search-input { background: ${theme.searchBg} !important; border-color: ${theme.searchBorder} !important; }
+                .search-input:focus { border-color: ${theme.searchBorder} !important; }
+                .icon-button { background: ${theme.buttonBg} !important; border-color: ${theme.buttonBorder} !important; }
+                .icon-button:hover { background: ${theme.buttonHoverBg} !important; border-color: ${theme.buttonBorder} !important; }
+                .search-icon { color: ${theme.textSecondary} !important; }
+                
+                /* Page content */
+                .bg-white { background-color: ${theme.headerBg} !important; }
+                .border-gray-200 { border-color: ${theme.headerBorder} !important; }
+                .text-gray-800 { color: ${theme.textDark} !important; }
+                .text-gray-700 { color: ${theme.textPrimary} !important; }
+                .text-gray-600 { color: ${theme.textSecondary} !important; }
+                .text-gray-500 { color: ${theme.textMuted} !important; }
+            `;
+        }
+
+        // Load saved theme on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('selectedTheme');
+            if (savedTheme) {
+                changeTheme(savedTheme);
+            } else {
+                changeTheme('reve');
+            }
+        });
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.icon-button') && !e.target.closest('.theme-dropdown')) {
+                document.getElementById('theme-dropdown').classList.remove('show');
+            }
+        });
+
+        function toggleWidgetMenu(button) {
+            // Simple toggle for demo
+            alert('Menu du widget - fonctionnalité de démonstration');
+        }
+    </script>
+</body>
+</html>
