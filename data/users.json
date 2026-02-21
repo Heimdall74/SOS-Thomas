@@ -33,5 +33,12 @@
     "email": "c.deleneuville@elv.esitc-paris.fr",
     "password": "scrypt:32768:8:1$6OVhi3xsvFitPV8R$fa73093e84e2c496a797ae754f8a2c59a9f53b3d5514ad7b32b48bf96c1f06f057613e3843a03aa342500c1ea312811de2a47d85f488a63253d6062fa77ac690",
     "created_at": "2026-02-17T15:27:59.687123"
+  },
+  "cb2de716-9274-42a7-9086-7b9e16bd5def": {
+    "id": "cb2de716-9274-42a7-9086-7b9e16bd5def",
+    "username": "test_new_user",
+    "email": "newuser@test.com",
+    "password": "scrypt:32768:8:1$h6pBCWcYB1jkPczG$577bf9a82e1be8be36a3c88cef5acdc0697cc67d71b810930340058c378cb215187a67939c2f2d9414909dbb1227a0a73f6ceb2df3c2fcd6e0d7a89707b4af64",
+    "created_at": "2026-02-20T15:01:07.220051"
   }
 }

@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session, send_file
 from flask_wtf import FlaskForm
+from flask_sqlalchemy import SQLAlchemy
 from wtforms import StringField, TextAreaField, SelectField, DateField, DateTimeField, FileField, SubmitField, PasswordField, IntegerField
 from wtforms.validators import DataRequired, Email, URL, EqualTo, Length, NumberRange
 import json
@@ -23,6 +24,27 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_USE_SIGNER'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+
+# Configuration de la base de données
+# En production, utilise PostgreSQL via DATABASE_URL
+# En développement, utilise SQLite local
+if os.environ.get("DATABASE_URL"):
+    # Mode production (Render/Heroku/etc.)
+    DATABASE_URL = os.environ.get("DATABASE_URL")
+    app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
+else:
+    # Mode développement local
+    DATABASE_URL = "sqlite:///sos_thomas.db"
+    app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
+
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# Initialisation de la base de données
+db = SQLAlchemy(app)
+
+# Créer les tables automatiquement si elles n'existent pas
+with app.app_context():
+    db.create_all()
 
 # Créer le dossier uploads s'il n'existe pas
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -161,6 +183,193 @@ class MessageForm(FlaskForm):
     contact = StringField('Contact', validators=[DataRequired()])
     text = TextAreaField('Message', validators=[DataRequired()])
 
+# Modèles de données SQLAlchemy
+class User(db.Model):
+    __tablename__ = 'users'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relations
+    events = db.relationship('Event', backref='user', lazy=True, cascade='all, delete-orphan')
+    projects = db.relationship('Project', backref='user', lazy=True, cascade='all, delete-orphan')
+    tasks = db.relationship('Task', backref='user', lazy=True, cascade='all, delete-orphan')
+    notes = db.relationship('Note', backref='user', lazy=True, cascade='all, delete-orphan')
+    accounts = db.relationship('Account', backref='user', lazy=True, cascade='all, delete-orphan')
+    mails = db.relationship('Mail', backref='user', lazy=True, cascade='all, delete-orphan')
+    photos = db.relationship('Photo', backref='user', lazy=True, cascade='all, delete-orphan')
+    calls = db.relationship('Call', backref='user', lazy=True, cascade='all, delete-orphan')
+    messages = db.relationship('Message', backref='user', lazy=True, cascade='all, delete-orphan')
+    links = db.relationship('Link', backref='user', lazy=True, cascade='all, delete-orphan')
+    
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+    
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+class Event(db.Model):
+    __tablename__ = 'events'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    date = db.Column(db.String(10), nullable=False)
+    time = db.Column(db.String(5))
+    title = db.Column(db.String(200), nullable=False)
+    category = db.Column(db.String(20))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Project(db.Model):
+    __tablename__ = 'projects'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    status = db.Column(db.String(20))
+    priority = db.Column(db.String(20))
+    methodology = db.Column(db.String(20))
+    start_date = db.Column(db.String(10))
+    end_date = db.Column(db.String(10))
+    description = db.Column(db.Text)
+    objectives = db.Column(db.Text)
+    progress = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relations
+    tasks = db.relationship('ProjectTask', backref='project', lazy=True, cascade='all, delete-orphan')
+    members = db.relationship('ProjectMember', backref='project', lazy=True, cascade='all, delete-orphan')
+    files = db.relationship('ProjectFile', backref='project', lazy=True, cascade='all, delete-orphan')
+    folders = db.relationship('Folder', backref='project', lazy=True, cascade='all, delete-orphan')
+
+class Task(db.Model):
+    __tablename__ = 'tasks'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    priority = db.Column(db.String(20))
+    completed = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class ProjectTask(db.Model):
+    __tablename__ = 'project_tasks'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    project_id = db.Column(db.String(36), db.ForeignKey('projects.id'), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    priority = db.Column(db.String(20))
+    completed = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Note(db.Model):
+    __tablename__ = 'notes'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class Account(db.Model):
+    __tablename__ = 'accounts'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    url = db.Column(db.String(500))
+    username = db.Column(db.String(100))
+    password = db.Column(db.String(255))
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Mail(db.Model):
+    __tablename__ = 'mails'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    sender = db.Column(db.String(200), nullable=False)
+    subject = db.Column(db.String(500), nullable=False)
+    content = db.Column(db.Text)
+    date = db.Column(db.String(10))
+    important = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Photo(db.Model):
+    __tablename__ = 'photos'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+    title = db.Column(db.String(200))
+    description = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Call(db.Model):
+    __tablename__ = 'calls'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    contact = db.Column(db.String(200), nullable=False)
+    date = db.Column(db.String(10))
+    time = db.Column(db.String(5))
+    duration = db.Column(db.String(20))
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Message(db.Model):
+    __tablename__ = 'messages'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    contact = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    date = db.Column(db.String(10))
+    time = db.Column(db.String(5))
+    sent = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Link(db.Model):
+    __tablename__ = 'links'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    url = db.Column(db.String(500), nullable=False)
+    description = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class ProjectMember(db.Model):
+    __tablename__ = 'project_members'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    project_id = db.Column(db.String(36), db.ForeignKey('projects.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    role = db.Column(db.String(50))
+    email = db.Column(db.String(120))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class ProjectFile(db.Model):
+    __tablename__ = 'project_files'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    project_id = db.Column(db.String(36), db.ForeignKey('projects.id'), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+    original_name = db.Column(db.String(255))
+    file_type = db.Column(db.String(50))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Folder(db.Model):
+    __tablename__ = 'folders'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    project_id = db.Column(db.String(36), db.ForeignKey('projects.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 # Gestion des données
 DATA_FILE = BASE_DIR / 'data.json'
 
@@ -219,36 +428,99 @@ def save_data(data):
         print(f"ERREUR lors de la sauvegarde: {e}")
         raise
 
-# Fonctions de gestion des utilisateurs
-def load_users():
-    users_file = BASE_DIR / 'data' / 'users.json'
-    if not os.path.exists(BASE_DIR / 'data'):
-        os.makedirs(BASE_DIR / 'data')
-    
-    if os.path.exists(users_file):
-        with open(users_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return {}
-
-def save_users(users):
-    users_file = BASE_DIR / 'data' / 'users.json'
-    with open(users_file, 'w', encoding='utf-8') as f:
-        json.dump(users, f, indent=2, ensure_ascii=False)
-
+# Fonctions de gestion des utilisateurs avec SQLAlchemy
 def get_user_by_username_or_email(identifier):
-    users = load_users()
-    for user in users.values():
-        if user['username'] == identifier or user['email'] == identifier:
-            return user
-    return None
+    return User.query.filter(
+        (User.username == identifier) | (User.email == identifier)
+    ).first()
 
 def username_exists(username):
-    users = load_users()
-    return any(user['username'] == username for user in users.values())
+    return User.query.filter_by(username=username).first() is not None
 
 def email_exists(email):
-    users = load_users()
-    return any(user['email'] == email for user in users.values())
+    return User.query.filter_by(email=email).first() is not None
+
+def create_user(username, email, password):
+    user = User(username=username, email=email)
+    user.set_password(password)
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+# Fonctions de gestion des données avec SQLAlchemy
+def get_user_events(user_id):
+    return Event.query.filter_by(user_id=user_id).all()
+
+def create_event(user_id, date, time, title, category):
+    event = Event(user_id=user_id, date=date, time=time, title=title, category=category)
+    db.session.add(event)
+    db.session.commit()
+    return event
+
+def delete_event(event_id):
+    event = Event.query.get(event_id)
+    if event:
+        db.session.delete(event)
+        db.session.commit()
+        return True
+    return False
+
+def get_user_projects(user_id):
+    return Project.query.filter_by(user_id=user_id).all()
+
+def create_project(user_id, name, status, priority, methodology, start_date, end_date, description, objectives, progress):
+    project = Project(
+        user_id=user_id, name=name, status=status, priority=priority,
+        methodology=methodology, start_date=start_date, end_date=end_date,
+        description=description, objectives=objectives, progress=progress
+    )
+    db.session.add(project)
+    db.session.commit()
+    return project
+
+def get_user_tasks(user_id):
+    return Task.query.filter_by(user_id=user_id).all()
+
+def create_task(user_id, name, priority):
+    task = Task(user_id=user_id, name=name, priority=priority)
+    db.session.add(task)
+    db.session.commit()
+    return task
+
+def update_task(task_id, completed):
+    task = Task.query.get(task_id)
+    if task:
+        task.completed = completed
+        db.session.commit()
+        return True
+    return False
+
+def get_user_notes(user_id):
+    return Note.query.filter_by(user_id=user_id).all()
+
+def create_note(user_id, title, content):
+    note = Note(user_id=user_id, title=title, content=content)
+    db.session.add(note)
+    db.session.commit()
+    return note
+
+def update_note(note_id, title, content):
+    note = Note.query.get(note_id)
+    if note:
+        note.title = title
+        note.content = content
+        note.updated_at = datetime.utcnow()
+        db.session.commit()
+        return True
+    return False
+
+def delete_note(note_id):
+    note = Note.query.get(note_id)
+    if note:
+        db.session.delete(note)
+        db.session.commit()
+        return True
+    return False
 
 # Fonctions de gestion des profils
 def load_profiles():
@@ -437,12 +709,12 @@ def login():
         password = form.password.data
         
         user = get_user_by_username_or_email(identifier)
-        if user and check_password_hash(user['password'], password):
-            session['user_id'] = user['id']
-            session['username'] = user['username']
-            session['email'] = user['email']
+        if user and user.check_password(password):
+            session['user_id'] = user.id
+            session['username'] = user.username
+            session['email'] = user.email
             session.permanent = True  # Rendre la session permanente
-            flash(f'Bon retour {user["username"]} !', 'success')
+            flash(f'Bon retour {user.username} !', 'success')
             return redirect(url_for('dashboard'))
         else:
             flash('Nom d\'utilisateur/email ou mot de passe incorrect', 'error')
@@ -463,21 +735,14 @@ def register():
         elif email_exists(email):
             flash('Cet email est déjà utilisé', 'error')
         else:
-            # Créer le nouvel utilisateur
-            users = load_users()
-            user_id = str(uuid.uuid4())
-            
-            users[user_id] = {
-                'id': user_id,
-                'username': username,
-                'email': email,
-                'password': generate_password_hash(password),
-                'created_at': datetime.now().isoformat()
-            }
-            
-            save_users(users)
-            flash('Compte créé avec succès ! Vous pouvez maintenant vous connecter.', 'success')
-            return redirect(url_for('login'))
+            # Créer le nouvel utilisateur avec SQLAlchemy
+            try:
+                create_user(username, email, password)
+                flash('Compte créé avec succès ! Vous pouvez maintenant vous connecter.', 'success')
+                return redirect(url_for('login'))
+            except Exception as e:
+                flash('Une erreur est survenue lors de la création du compte. Veuillez réessayer.', 'error')
+                print(f"Erreur lors de la création de l'utilisateur: {e}")
     
     return render_template('register.html', form=form)
 
@@ -489,8 +754,8 @@ def logout():
 
 @app.route('/first_connection')
 def first_connection():
-    users = load_users()
-    if users:  # Si des utilisateurs existent, rediriger vers login
+    users_count = User.query.count()
+    if users_count > 0:  # Si des utilisateurs existent, rediriger vers login
         return redirect(url_for('login'))
     return render_template('first_connection.html')
 
@@ -498,29 +763,69 @@ def first_connection():
 @app.route('/')
 @login_required
 def dashboard():
-    data = load_data()
+    user_id = session.get('user_id')
     current_date = datetime.now().strftime('%d %B %Y')
+    
+    # Récupérer les données avec SQLAlchemy
+    events = get_user_events(user_id)
+    projects = get_user_projects(user_id)
+    tasks = get_user_tasks(user_id)
+    notes = get_user_notes(user_id)
+    
+    # Convertir en format compatible avec les templates
+    data = {
+        'events': [{'id': e.id, 'date': e.date, 'time': e.time, 'title': e.title, 'category': e.category} for e in events],
+        'projects': [{'id': p.id, 'name': p.name, 'status': p.status, 'priority': p.priority, 'progress': p.progress} for p in projects],
+        'tasks': [{'id': t.id, 'name': t.name, 'priority': t.priority, 'completed': t.completed} for t in tasks],
+        'notes': [{'id': n.id, 'title': n.title, 'content': n.content[:100] + '...' if len(n.content) > 100 else n.content} for n in notes]
+    }
+    
     return render_template('dashboard.html', data=data, current_date=current_date)
 
 @app.route('/agenda')
 @login_required
 def agenda():
-    data = load_data()
+    user_id = session.get('user_id')
+    events = get_user_events(user_id)
     form = EventForm()
+    
+    # Convertir en format compatible avec les templates
+    data = {
+        'events': [{'id': e.id, 'date': e.date, 'time': e.time, 'title': e.title, 'category': e.category} for e in events]
+    }
+    
     return render_template('agenda.html', data=data, form=form)
 
 @app.route('/projets')
 @login_required
 def projets():
-    data = load_data()
+    user_id = session.get('user_id')
+    projects = get_user_projects(user_id)
     form = ProjectForm()
+    
+    # Convertir en format compatible avec les templates
+    data = {
+        'projects': [{'id': p.id, 'name': p.name, 'status': p.status, 'priority': p.priority, 
+                     'methodology': p.methodology, 'start_date': p.start_date, 'end_date': p.end_date,
+                     'description': p.description, 'objectives': p.objectives, 'progress': p.progress} for p in projects]
+    }
+    
     return render_template('projets.html', data=data, form=form)
 
 @app.route('/taches')
 @login_required
 def taches():
-    data = load_data()
+    user_id = session.get('user_id')
+    tasks = get_user_tasks(user_id)
+    projects = get_user_projects(user_id)
     form = TaskForm()
+    project_form = ProjectTaskForm()
+    
+    # Convertir en format compatible avec les templates
+    data = {
+        'tasks': [{'id': t.id, 'name': t.name, 'priority': t.priority, 'completed': t.completed} for t in tasks],
+        'projects': [{'id': p.id, 'name': p.name} for p in projects]
+    }
     project_form = ProjectTaskForm()
     
     # Remplir les options de projets pour le formulaire de tâche de projet
@@ -580,8 +885,15 @@ def taches():
 @app.route('/notes')
 @login_required
 def notes():
-    data = load_data()
+    user_id = session.get('user_id')
+    notes = get_user_notes(user_id)
     form = NoteForm()
+    
+    # Convertir en format compatible avec les templates
+    data = {
+        'notes': [{'id': n.id, 'title': n.title, 'content': n.content, 'updated_at': n.updated_at.isoformat() if n.updated_at else ''} for n in notes]
+    }
+    
     return render_template('notes.html', data=data, form=form)
 
 @app.route('/note_editor')
@@ -595,33 +907,30 @@ def note_editor():
 def save_note():
     try:
         note_data = request.get_json()
-        data = load_data()
+        user_id = session.get('user_id')
         
         if 'id' in note_data and note_data['id']:
             # Mettre à jour une note existante
-            for i, note in enumerate(data['notes']):
-                if note['id'] == note_data['id']:
-                    data['notes'][i].update(note_data)
-                    break
+            success = update_note(note_data['id'], note_data.get('title', ''), note_data.get('content', ''))
+            if success:
+                return jsonify({
+                    'success': True,
+                    'note_id': note_data['id'],
+                    'message': 'Note mise à jour avec succès'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': 'Note non trouvée'
+                }), 404
         else:
             # Créer une nouvelle note
-            new_note = {
-                'id': str(uuid.uuid4()),
-                'title': note_data.get('title', 'Sans titre'),
-                'content': note_data.get('content', ''),
-                'folder': note_data.get('folder', 'general'),
-                'created_at': note_data.get('created_at', datetime.now().isoformat()),
-                'updated_at': datetime.now().isoformat()
-            }
-            data['notes'].append(new_note)
-        
-        save_data(data)
-        
-        return jsonify({
-            'success': True,
-            'note_id': note_data.get('id') or new_note['id'],
-            'message': 'Note sauvegardée avec succès'
-        })
+            note = create_note(user_id, note_data.get('title', 'Sans titre'), note_data.get('content', ''))
+            return jsonify({
+                'success': True,
+                'note_id': note.id,
+                'message': 'Note créée avec succès'
+            })
     except Exception as e:
         return jsonify({
             'success': False,
@@ -632,13 +941,18 @@ def save_note():
 @login_required
 def get_note(note_id):
     try:
-        data = load_data()
-        note = next((note for note in data['notes'] if note['id'] == note_id), None)
+        note = Note.query.get(note_id)
         
-        if note:
+        if note and note.user_id == session.get('user_id'):
             return jsonify({
                 'success': True,
-                'note': note
+                'note': {
+                    'id': note.id,
+                    'title': note.title,
+                    'content': note.content,
+                    'created_at': note.created_at.isoformat(),
+                    'updated_at': note.updated_at.isoformat() if note.updated_at else ''
+                }
             })
         else:
             return jsonify({
@@ -648,7 +962,7 @@ def get_note(note_id):
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Erreur: {str(e)}'
+            'message': f'Erreur lors du chargement: {str(e)}'
         }), 500
 
 @app.route('/comptes')
