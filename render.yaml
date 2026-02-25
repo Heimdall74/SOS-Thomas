@@ -1,26 +1,15 @@
+# render.yaml
 services:
   - type: web
-    name: sos-thomas        # Nom de ton service sur Render
+    name: sos-thomas
     env: python
-    pythonVersion: 3.14     # Version de Python que tu utilises
-    plan: free               # Plan gratuit
+    region: oregon
+    branch: main
+    plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app   # Lancement de Flask avec Gunicorn
-    autoDeploy: true         # Déploie automatiquement à chaque push
-    envVars:                 # Variables d'environnement, si nécessaire
-      - key: DATABASE_URL
-        fromDatabase:
-          name: sos-thomas-db
-          property: connectionString
+    startCommand: gunicorn app:app
+    envVars:
       - key: FLASK_ENV
         value: production
-      - key: SPOTIFY_CLIENT_ID
-        value: your_spotify_client_id_here
-      - key: SPOTIFY_CLIENT_SECRET
-        value: your_spotify_client_secret_here
-
-databases:
-  - name: sos-thomas-db
-    engine: postgresql
-    version: 18
-    plan: free
+      - key: PORT
+        value: 10000 # Render utilisera cette variable pour le port
