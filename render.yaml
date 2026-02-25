@@ -3,9 +3,12 @@ services:
   - type: web
     name: sos-thomas-python
     runtime: python
+    plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    startCommand: python init_db.py && gunicorn app:app
     healthCheckPath: /
+    httpPort: 5000
+    autoDeploy: yes
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -13,8 +16,13 @@ services:
           property: connectionString
       - key: PYTHON_VERSION
         value: 3.10.0
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
 
 databases:
   - name: sos-thomas-db
-    databaseName: dbst_na2t
-    user: alexandre
+    databaseName: sos_thomas
+    user: sos_thomas_user
+    plan: free
