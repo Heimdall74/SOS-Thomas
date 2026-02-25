@@ -21,3 +21,12 @@ data_backup.json
 # OS
 .DS_Store
 Thumbs.db
+# fichiers Python compilés
+__pycache__/
+
+# fichiers de configuration IDE
+.idea/
+
+# fichiers locaux sensibles / volumineux
+data/*.json
+*.db
