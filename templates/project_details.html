@@ -57,10 +57,7 @@ window.addEventListener('unhandledrejection', function(e) {
             <button class="tab-btn" data-tab="notes" onclick="switchTab('notes')">
                 Notes
             </button>
-            <button class="tab-btn" data-tab="members" onclick="switchTab('members')">
-                Membres
-            </button>
-            <button class="tab-btn" data-tab="activity" onclick="switchTab('activity')">
+                        <button class="tab-btn" data-tab="activity" onclick="switchTab('activity')">
                 Activité
             </button>
         </nav>
@@ -393,55 +390,7 @@ window.addEventListener('unhandledrejection', function(e) {
                 </div>
             </div>
 
-            <!-- Members Tab -->
-            <div id="members" class="tab-pane">
-                <div class="members-section">
-                    <div class="members-header">
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <h3>Membres du projet</h3>
-                                <p class="text-gray-600">Gérez les personnes et leurs rôles dans ce projet</p>
-                            </div>
-                            <div class="flex gap-3">
-                                <button onclick="openManageRolesModal()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2">
-                                    <i class="fas fa-user-tag"></i>
-                                    <span>Gérer les rôles</span>
-                                </button>
-                                <button onclick="openAddMemberModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
-                                    <i class="fas fa-user-plus"></i>
-                                    <span>Ajouter un membre</span>
-                                </button>
-                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="members-content">
-                        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                            <div class="overflow-x-auto">
-                                <table class="w-full" id="projectMembersTable">
-                                    <thead class="bg-gray-50 border-b border-gray-200">
-                                        <tr>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Membre</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rôle</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Disponibilité</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compétences</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="bg-white divide-y divide-gray-200" id="projectMembersTableBody">
-                                        <!-- Les membres seront chargés dynamiquement -->
-                                    </tbody>
-                                </table>
-                                <div id="noProjectMembersMessage" class="text-center py-8 text-gray-500 hidden">
-                                    <i class="fas fa-users text-4xl mb-3"></i>
-                                    <p>Aucun membre dans ce projet</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- Activity Tab -->
             <div id="activity" class="tab-pane">
@@ -1990,13 +1939,7 @@ function switchTab(tabName) {
         // Charger les données spécifiques à l'onglet si nécessaire
         if (tabName === 'members') {
             console.log('Chargement des membres pour l\'onglet membres');
-            if (typeof loadRoles === 'function') {
-                loadRoles();
-            }
-            if (typeof loadProjectMembers === 'function') {
-                loadProjectMembers();
-            }
-        }
+                    }
     } else {
         console.error('Onglet non trouvé:', tabName);
     }
@@ -4544,10 +4487,6 @@ body.dragging-active * {
 
 <!-- Script unifié pour la gestion des membres, rôles et drag & drop -->
 <script>
-// Variables globales pour les membres et rôles
-let allRoles = [];
-let projectMembers = [];
-const currentProjectId = '{{ project.id }}';
 
 // Fonctions pour la gestion des rôles
 function openManageRolesModal() {

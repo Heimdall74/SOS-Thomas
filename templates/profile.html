@@ -6,8 +6,8 @@
 <!-- Dashboard Content -->
 <div class="dashboard-content">
     <div class="dashboard-header">
-        <h1 class="dashboard-title">Mon Profil</h1>
-        <p class="dashboard-subtitle">Gérez vos informations personnelles et vos services</p>
+        <h1 class="dashboard-title profile-title">Mon Profil</h1>
+        <p class="dashboard-subtitle profile-subtitle">Gérez vos informations personnelles et vos services</p>
     </div>
     
     <!-- Contenu du profil -->
@@ -51,7 +51,7 @@
                         {% if profile.birth_date %}
                             <span><i class="fas fa-birthday-cake mr-1"></i>{{ profile.birth_date[:10] }}</span>
                         {% endif %}
-                        <span><i class="fas fa-calendar mr-1"></i>Membre depuis {{ user.created_at[:10] }}</span>
+                        <span><i class="fas fa-calendar mr-1"></i>Membre depuis {{ user.created_at.strftime('%Y-%m-%d') }}</span>
                     </div>
                 </div>
                 
@@ -245,7 +245,7 @@
                                 <span class="text-sm text-gray-700">Mode contraste élevé</span>
                             </label>
                             <label class="flex items-center">
-                                <input type="checkbox" class="mr-3">
+                                <input type="checkbox" class="mr-3" id="large-font-toggle" onchange="toggleLargeFont()">
                                 <span class="text-sm text-gray-700">Police plus grande</span>
                             </label>
                             <label class="flex items-center">
@@ -418,6 +418,248 @@ function showNotification(message, type) {
         notification.remove();
     }, 5000);
 }
+
+// Fonction pour augmenter/réduire la taille de toutes les écritures du site
+function toggleLargeFont() {
+    const checkbox = document.getElementById('large-font-toggle');
+    const body = document.body;
+    const sidebar = document.querySelector('.sidebar');
+    const header = document.querySelector('.header');
+    const searchInput = document.querySelector('.search-input');
+    
+    // Éléments spécifiques au profil
+    const profileTitle = document.querySelector('.profile-title');
+    const profileSubtitle = document.querySelector('.profile-subtitle');
+    const formTitles = document.querySelectorAll('h3, h4, label');
+    
+    if (checkbox.checked) {
+        // Augmenter toutes les écritures de 20%
+        body.style.fontSize = '120%';
+        body.style.lineHeight = '1.4';
+        
+        // Augmenter aussi le bandeau de gauche (sidebar) - TOUS les éléments
+        if (sidebar) {
+            sidebar.style.fontSize = '120%';
+            sidebar.style.lineHeight = '1.4';
+            
+            // Cibler spécifiquement tous les éléments du sidebar
+            const logo = sidebar.querySelector('.logo');
+            const userDetails = sidebar.querySelectorAll('.user-details h3, .user-details p');
+            const navItems = sidebar.querySelectorAll('.nav-item span');
+            const navIcons = sidebar.querySelectorAll('.nav-icon');
+            
+            if (logo) {
+                logo.style.fontSize = '120%';
+                logo.style.lineHeight = '1.4';
+            }
+            
+            userDetails.forEach(element => {
+                element.style.fontSize = '120%';
+                element.style.lineHeight = '1.4';
+            });
+            
+            navItems.forEach(element => {
+                element.style.fontSize = '120%';
+                element.style.lineHeight = '1.4';
+            });
+            
+            navIcons.forEach(element => {
+                element.style.fontSize = '120%';
+                element.style.lineHeight = '1.4';
+            });
+        }
+        
+        // Augmenter aussi le bandeau supérieur de recherche
+        if (header) {
+            header.style.fontSize = '120%';
+            header.style.lineHeight = '1.4';
+        }
+        
+        // Augmenter spécifiquement la barre de recherche
+        if (searchInput) {
+            searchInput.style.fontSize = '120%';
+            searchInput.style.lineHeight = '1.4';
+        }
+        
+        // Augmenter les titres et sous-titres du profil
+        if (profileTitle) {
+            profileTitle.style.fontSize = '120%';
+            profileTitle.style.lineHeight = '1.4';
+        }
+        
+        if (profileSubtitle) {
+            profileSubtitle.style.fontSize = '120%';
+            profileSubtitle.style.lineHeight = '1.4';
+        }
+        
+        // Augmenter tous les titres et labels des formulaires
+        formTitles.forEach(element => {
+            element.style.fontSize = '120%';
+            element.style.lineHeight = '1.4';
+        });
+        
+        // Sauvegarder la préférence dans localStorage
+        localStorage.setItem('largeFont', 'true');
+        
+        showNotification('Police augmentée de 20% (tout le site)', 'success');
+    } else {
+        // Revenir à la taille normale
+        body.style.fontSize = '';
+        body.style.lineHeight = '';
+        
+        // Rétablir le bandeau de gauche
+        if (sidebar) {
+            sidebar.style.fontSize = '';
+            sidebar.style.lineHeight = '';
+            
+            // Rétablir spécifiquement tous les éléments du sidebar
+            const logo = sidebar.querySelector('.logo');
+            const userDetails = sidebar.querySelectorAll('.user-details h3, .user-details p');
+            const navItems = sidebar.querySelectorAll('.nav-item span');
+            const navIcons = sidebar.querySelectorAll('.nav-icon');
+            
+            if (logo) {
+                logo.style.fontSize = '';
+                logo.style.lineHeight = '';
+            }
+            
+            userDetails.forEach(element => {
+                element.style.fontSize = '';
+                element.style.lineHeight = '';
+            });
+            
+            navItems.forEach(element => {
+                element.style.fontSize = '';
+                element.style.lineHeight = '';
+            });
+            
+            navIcons.forEach(element => {
+                element.style.fontSize = '';
+                element.style.lineHeight = '';
+            });
+        }
+        
+        // Rétablir le bandeau supérieur
+        if (header) {
+            header.style.fontSize = '';
+            header.style.lineHeight = '';
+        }
+        
+        // Rétablir la barre de recherche
+        if (searchInput) {
+            searchInput.style.fontSize = '';
+            searchInput.style.lineHeight = '';
+        }
+        
+        // Rétablir les titres et sous-titres du profil
+        if (profileTitle) {
+            profileTitle.style.fontSize = '';
+            profileTitle.style.lineHeight = '';
+        }
+        
+        if (profileSubtitle) {
+            profileSubtitle.style.fontSize = '';
+            profileSubtitle.style.lineHeight = '';
+        }
+        
+        // Rétablir tous les titres et labels des formulaires
+        formTitles.forEach(element => {
+            element.style.fontSize = '';
+            element.style.lineHeight = '';
+        });
+        
+        // Supprimer la préférence du localStorage
+        localStorage.removeItem('largeFont');
+        
+        showNotification('Police rétablie à la taille normale', 'success');
+    }
+}
+
+// Restaurer la préférence au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    const largeFont = localStorage.getItem('largeFont');
+    if (largeFont === 'true') {
+        document.getElementById('large-font-toggle').checked = true;
+        
+        // Appliquer au body
+        document.body.style.fontSize = '120%';
+        document.body.style.lineHeight = '1.4';
+        
+        // Appliquer au bandeau de gauche
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+            sidebar.style.fontSize = '120%';
+            sidebar.style.lineHeight = '1.4';
+            
+            // Appliquer spécifiquement à tous les éléments du sidebar
+            const logo = sidebar.querySelector('.logo');
+            const userDetails = sidebar.querySelectorAll('.user-details h3, .user-details p');
+            const navItems = sidebar.querySelectorAll('.nav-item span');
+            const navIcons = sidebar.querySelectorAll('.nav-icon');
+            
+            if (logo) {
+                logo.style.fontSize = '120%';
+                logo.style.lineHeight = '1.4';
+            }
+            
+            userDetails.forEach(element => {
+                element.style.fontSize = '120%';
+                element.style.lineHeight = '1.4';
+            });
+            
+            navItems.forEach(element => {
+                element.style.fontSize = '120%';
+                element.style.lineHeight = '1.4';
+            });
+            
+            navIcons.forEach(element => {
+                element.style.fontSize = '120%';
+                element.style.lineHeight = '1.4';
+            });
+        }
+        
+        // Appliquer au bandeau supérieur
+        const header = document.querySelector('.header');
+        if (header) {
+            header.style.fontSize = '120%';
+            header.style.lineHeight = '1.4';
+        }
+        
+        // Appliquer à la barre de recherche
+        const searchInput = document.querySelector('.search-input');
+        if (searchInput) {
+            searchInput.style.fontSize = '120%';
+            searchInput.style.lineHeight = '1.4';
+        }
+        
+        // Appliquer les titres et sous-titres du profil
+        const profileTitle = document.querySelector('.profile-title');
+        const profileSubtitle = document.querySelector('.profile-subtitle');
+        const formTitles = document.querySelectorAll('h3, h4, label');
+        
+        if (profileTitle) {
+            profileTitle.style.fontSize = '120%';
+            profileTitle.style.lineHeight = '1.4';
+        }
+        
+        if (profileSubtitle) {
+            profileSubtitle.style.fontSize = '120%';
+            profileSubtitle.style.lineHeight = '1.4';
+        }
+        
+        // Appliquer tous les titres et labels des formulaires
+        formTitles.forEach(element => {
+            element.style.fontSize = '120%';
+            element.style.lineHeight = '1.4';
+        });
+        
+        // Synchroniser l'état de la case à cocher "Police plus grande"
+        const largeFontToggle = document.getElementById('large-font-toggle');
+        if (largeFontToggle) {
+            largeFontToggle.checked = localStorage.getItem('largeFont') === 'true';
+        }
+    }
+});
 </script>
     </div>
 </div>

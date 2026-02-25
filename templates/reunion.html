@@ -1,57 +1,187 @@
 {% extends "base.html" %}
 
-{% block title %}Réunion - SOS Thomas{% endblock %}
+{% block title %}Réunions - SOS Thomas{% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="flex justify-between items-center mb-8">
-        <h2 class="text-3xl font-bold text-gray-800">Mode réunion</h2>
-        <a href="{{ url_for('dashboard') }}" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
-            <i class="fas fa-arrow-left mr-2"></i>Retour
-        </a>
-    </div>
-    
-    <div class="bg-white rounded-xl shadow-md p-6">
-        <form method="POST" action="{{ url_for('add_meeting') }}" class="mb-6">
-            {{ form.hidden_tag() }}
-            <div class="space-y-4">
-                {{ form.title(class="border rounded px-3 py-2 w-full") }}
-                {{ form.date(class="border rounded px-3 py-2 w-full") }}
-                {{ form.notes(class="border rounded px-3 py-2 w-full h-48") }}
-                <button type="submit" class="bg-teal-500 text-white px-4 py-2 rounded hover:bg-teal-600">
-                    <i class="fas fa-save mr-2"></i>Enregistrer
-                </button>
+        <div>
+            <h2 class="text-3xl font-bold text-gray-800">Réunions</h2>
+            <p class="text-gray-600 mt-2">Gérez vos réunions et rendez-vous</p>
+        </div>
             </div>
-        </form>
-        
-        <div class="space-y-4">
-            {% for meeting in data.meetings %}
-                <div class="bg-gray-50 p-4 rounded-lg">
-                    <div class="flex justify-between items-start">
-                        <div class="flex-1">
-                            <h4 class="font-semibold text-gray-800">{{ meeting.title }}</h4>
-                            <p class="text-sm text-gray-600 mb-2">
-                                <i class="fas fa-calendar mr-2"></i>
-                                {{ meeting.date[:10] }} {{ meeting.date[11:16] if meeting.date|length > 16 else '' }}
-                            </p>
-                            <p class="text-sm text-gray-700">{{ meeting.notes[:200] }}{% if meeting.notes|length > 200 %}...{% endif %}</p>
-                        </div>
-                        <div class="flex items-center space-x-2 ml-4">
-                            <button onclick="alert('{{ meeting.title }}\\nDate: {{ meeting.date[:10] }} {{ meeting.date[11:16] if meeting.date|length > 16 else '' }}\\n\\nNotes:\\n{{ meeting.notes | replace('\n', '\\n') | replace("'", "\\'") }}')" 
-                                    class="text-blue-500 hover:text-blue-700">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            <a href="{{ url_for('delete_item', item_type='meetings', item_id=meeting.id) }}" 
-                               class="text-red-500 hover:text-red-700">
-                                <i class="fas fa-trash"></i>
-                            </a>
-                        </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Formulaire d'ajout -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+                    <i class="fas fa-calendar-plus text-teal-500 mr-3"></i>
+                    Nouvelle réunion
+                </h3>
+                
+                <form method="POST" action="{{ url_for('add_meeting') }}" class="space-y-4">
+                    {{ form.hidden_tag() }}
+                    
+                    <div>
+                        {{ form.title.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                        {{ form.title(class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-colors", placeholder="Titre de la réunion") }}
+                        {% if form.title.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.title.errors[0] }}</p>
+                        {% endif %}
                     </div>
+                    
+                    <div>
+                        {{ form.date.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                        {{ form.date(class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-colors") }}
+                        {% if form.date.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.date.errors[0] }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div>
+                        {{ form.notes.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                        {{ form.notes(class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-colors h-32 resize-none", placeholder="Notes, ordre du jour, participants...") }}
+                        {% if form.notes.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.notes.errors[0] }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-teal-500 text-white py-3 px-4 rounded-lg hover:bg-teal-600 transition-colors font-medium flex items-center justify-center">
+                        <i class="fas fa-save mr-2"></i>
+                        Enregistrer la réunion
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Liste des réunions -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-semibold text-gray-800 flex items-center">
+                        <i class="fas fa-list text-teal-500 mr-3"></i>
+                        Réunions planifiées
+                    </h3>
+                    <span class="bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-sm font-medium">
+                        {{ data.meetings|length }} réunion{{ 's' if data.meetings|length != 1 else '' }}
+                    </span>
                 </div>
-            {% else %}
-                <p class="text-gray-500 text-center py-8">Aucune réunion enregistrée</p>
-            {% endfor %}
+                
+                <div class="space-y-4">
+                    {% for meeting in data.meetings|sort(attribute='date', reverse=true) %}
+                        <div class="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow bg-gradient-to-r from-gray-50 to-white">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <div class="flex items-center mb-2">
+                                        <i class="fas fa-calendar-alt text-teal-500 mr-3"></i>
+                                        <h4 class="font-semibold text-lg text-gray-800">{{ meeting.title }}</h4>
+                                    </div>
+                                    
+                                    <div class="flex items-center text-sm text-gray-600 mb-3">
+                                        <i class="fas fa-clock mr-2"></i>
+                                        <span>
+                                            {% set meeting_date = meeting.date[:10] %}
+                                            {% set meeting_time = meeting.date[11:16] if meeting.date|length > 16 else '' %}
+                                            {{ meeting_date|date('d/m/Y') if meeting_date else 'Date à définir' }}
+                                            {% if meeting_time %} à {{ meeting_time }}{% endif %}
+                                        </span>
+                                    </div>
+                                    
+                                    {% if meeting.notes %}
+                                        <div class="bg-gray-50 rounded p-3 border-l-4 border-teal-500">
+                                            <p class="text-sm text-gray-700 leading-relaxed">
+                                                {{ meeting.notes[:150] }}{% if meeting.notes|length > 150 %}...{% endif %}
+                                            </p>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="flex flex-col space-y-2 ml-4">
+                                    <button onclick="showMeetingDetails({{ meeting.title|tojson }}, {{ meeting.date[:10]|tojson }}, {{ (meeting.date[11:16] if meeting.date|length > 16 else '')|tojson }}, {{ meeting.notes|tojson }})" 
+                                            class="text-blue-500 hover:text-blue-700 p-2 rounded-lg hover:bg-blue-50 transition-colors"
+                                            title="Voir les détails">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    
+                                    <a href="{{ url_for('delete_item', item_type='meetings', item_id=meeting.id) }}" 
+                                       onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette réunion ?')"
+                                       class="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 transition-colors"
+                                       title="Supprimer">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-12">
+                            <i class="fas fa-calendar-times text-6xl text-gray-300 mb-4"></i>
+                            <p class="text-gray-500 text-lg">Aucune réunion enregistrée</p>
+                            <p class="text-gray-400 text-sm mt-2">Utilisez le formulaire pour ajouter votre première réunion</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Modal pour les détails -->
+<div id="meetingModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold text-gray-800">Détails de la réunion</h3>
+            <button onclick="closeMeetingModal()" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div id="meetingDetails" class="space-y-4">
+            <!-- Contenu dynamique -->
+        </div>
+    </div>
+</div>
+
+<script>
+function showMeetingDetails(title, date, time, notes) {
+    const modal = document.getElementById('meetingModal');
+    const details = document.getElementById('meetingDetails');
+    
+    details.innerHTML = `
+        <div class="space-y-4">
+            <div>
+                <label class="text-sm font-medium text-gray-700">Titre</label>
+                <p class="text-lg font-semibold text-gray-800">${title}</p>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-gray-700">Date et heure</label>
+                <p class="text-gray-800">
+                    <i class="fas fa-calendar mr-2"></i>${date}
+                    ${time ? ' à ' + time : ''}
+                </p>
+            </div>
+            ${notes ? `
+            <div>
+                <label class="text-sm font-medium text-gray-700">Notes</label>
+                <div class="bg-gray-50 rounded p-3 mt-2">
+                    <pre class="text-sm text-gray-700 whitespace-pre-wrap">${notes}</pre>
+                </div>
+            </div>
+            ` : ''}
+        </div>
+    `;
+    
+    modal.classList.remove('hidden');
+}
+
+function closeMeetingModal() {
+    document.getElementById('meetingModal').classList.add('hidden');
+}
+
+// Fermer le modal en cliquant à l'extérieur
+document.getElementById('meetingModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeMeetingModal();
+    }
+});
+</script>
 {% endblock %}

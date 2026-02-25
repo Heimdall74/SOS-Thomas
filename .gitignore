@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+.env/
+
+# IDE
+.idea/
+
+# Database
+*.db
+instance/
+
+# JSON data files (si dynamiques)
+data.json
+data/users.json
+data_backup.json
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,20 @@
+# Configuration pour Render
+services:
+  - type: web
+    name: sos-thomas-python
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    healthCheckPath: /
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sos-thomas-db
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.10.0
+
+databases:
+  - name: sos-thomas-db
+    databaseName: dbst_na2t
+    user: alexandre
