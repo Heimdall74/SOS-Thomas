@@ -3,6 +3,7 @@ services:
   - type: web
     name: sos-thomas
     env: python
+    pythonVersion: 3.11
     region: oregon
     branch: main
     plan: free
