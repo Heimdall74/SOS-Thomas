@@ -26,8 +26,8 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = '193a2877496f2a1385ef21f1fe4388925852ee5d959a380a64b4fb0195b424c3'
 app.config['UPLOAD_FOLDER'] = BASE_DIR / 'static' / 'uploads'
 # Utiliser des cookies signés simples au lieu de sessions filesystem pour éviter les problèmes d'encodage
-app.config['SESSION_PERMANENT'] = True
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+app.config['SESSION_PERMANENT'] = False
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1)  # Au cas où, mais ne sera pas utilisé
 
 # Configuration de la base de données
 # En production, utilise PostgreSQL via DATABASE_URL
@@ -721,7 +721,6 @@ def login():
             session['user_id'] = user.id
             session['username'] = user.username
             session['email'] = user.email
-            session.permanent = True  # Rendre la session permanente
             flash(f'Bon retour {user.username} !', 'success')
             return redirect(url_for('dashboard'))
         else:
