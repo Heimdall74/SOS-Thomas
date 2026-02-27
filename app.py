@@ -933,6 +933,9 @@ def save_note():
             # Mettre à jour une note existante
             success = update_note(note_data['id'], note_data.get('title', ''), note_data.get('content', ''))
             if success:
+                # Notifier les widgets du dashboard
+                notify_widget_update('notes', user_id)
+                
                 return jsonify({
                     'success': True,
                     'note_id': note_data['id'],
@@ -946,6 +949,10 @@ def save_note():
         else:
             # Créer une nouvelle note
             note = create_note(user_id, note_data.get('title', 'Sans titre'), note_data.get('content', ''))
+            
+            # Notifier les widgets du dashboard
+            notify_widget_update('notes', user_id)
+            
             return jsonify({
                 'success': True,
                 'note_id': note.id,
@@ -1332,75 +1339,81 @@ def allowed_file(filename, allowed_extensions):
 
 # Routes API pour les actions
 @app.route('/api/add_event', methods=['POST'])
+@login_required
 def add_event():
-    data = load_data()
+    user_id = session.get('user_id')
     form = EventForm()
     if form.validate_on_submit():
-        # Combiner date et heure si l'heure est fournie
-        datetime_str = form.date.data.isoformat()
-        if form.time.data and form.time.data.strip():
-            datetime_str = f"{form.date.data.isoformat()}T{form.time.data.strip()}:00"
+        # Créer l'événement avec SQLAlchemy
+        event = Event(
+            user_id=user_id,
+            date=form.date.data,
+            time=form.time.data or '',
+            title=form.title.data,
+            category=form.category.data or 'personnel',
+            created_at=datetime.now()
+        )
+        db.session.add(event)
+        db.session.commit()
         
-        # Déterminer si l'événement est récurrent (anniversaire)
-        is_recurring = form.category.data == 'birthday'
+        # Notifier le dashboard
+        notify_widget_update('agenda', user_id)
         
-        event = {
-            'id': str(uuid.uuid4()),
-            'date': datetime_str,
-            'title': form.title.data,
-            'category': form.category.data or '',
-            'recurring': is_recurring,
-            'created_at': datetime.now().isoformat()
-        }
-        data['events'].append(event)
-        save_data(data)
         flash('Événement ajouté avec succès!')
     return redirect(url_for('agenda'))
 
 @app.route('/api/edit_event/<event_id>', methods=['POST'])
+@login_required
 def edit_event(event_id):
-    data = load_data()
-    event_index = next((i for i, event in enumerate(data['events']) if event['id'] == event_id), None)
+    user_id = session.get('user_id')
     
-    if event_index is not None:
-        try:
-            import json
-            update_data = json.loads(request.data)
-            
-            # Gérer la mise à jour de la date et de l'heure
-            current_event = data['events'][event_index]
-            new_date = update_data.get('date', current_event['date'])
-            new_time = update_data.get('time', '')
-            
-            if new_time and new_time.strip():
-                # Combiner date et heure
-                if 'T' in new_date:
-                    date_part = new_date.split('T')[0]
-                else:
-                    date_part = new_date
-                datetime_str = f"{date_part}T{new_time.strip()}:00"
-            else:
-                # Garder seulement la date
-                if 'T' in new_date:
-                    datetime_str = new_date.split('T')[0]
-                else:
-                    datetime_str = new_date
-            
-            # Déterminer si l'événement est récurrent
-            is_recurring = update_data.get('category', current_event.get('category', '')) == 'birthday'
-            
-            data['events'][event_index]['title'] = update_data.get('title', current_event['title'])
-            data['events'][event_index]['date'] = datetime_str
-            data['events'][event_index]['category'] = update_data.get('category', current_event.get('category', ''))
-            data['events'][event_index]['recurring'] = is_recurring
-            data['events'][event_index]['updated_at'] = datetime.now().isoformat()
-            
-            save_data(data)
-            return jsonify({'success': True})
-        except Exception as e:
-            return jsonify({'success': False, 'error': str(e)})
+    try:
+        update_data = request.get_json()
+        
+        # Trouver l'événement dans SQLAlchemy
+        event = Event.query.filter_by(id=event_id, user_id=user_id).first()
+        
+        if not event:
+            return jsonify({'success': False, 'error': 'Événement non trouvé'})
+        
+        # Mettre à jour l'événement
+        event.title = update_data.get('title', event.title)
+        event.date = datetime.fromisoformat(update_data.get('date', event.date.isoformat()))
+        event.time = update_data.get('time', event.time)
+        event.category = update_data.get('category', event.category)
+        event.updated_at = datetime.now()
+        
+        db.session.commit()
+        
+        # Notifier le dashboard
+        notify_widget_update('agenda', user_id)
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/delete_event/<event_id>', methods=['DELETE'])
+@login_required
+def delete_event_route(event_id):
+    """Supprimer un événement avec SQLAlchemy"""
+    user_id = session.get('user_id')
     
-    return jsonify({'success': False, 'error': 'Événement non trouvé'})
+    try:
+        # Trouver l'événement dans SQLAlchemy
+        event = Event.query.filter_by(id=event_id, user_id=user_id).first()
+        
+        if not event:
+            return jsonify({'success': False, 'error': 'Événement non trouvé'})
+        
+        db.session.delete(event)
+        db.session.commit()
+        
+        # Notifier le dashboard
+        notify_widget_update('agenda', user_id)
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/add_project', methods=['POST'])
 @login_required
@@ -1444,6 +1457,9 @@ def add_project():
             progress=int(project_data.get('progress', 0))
         )
         
+        # Notifier les widgets du dashboard
+        notify_widget_update('projects', user_id)
+        
         return jsonify({
             'success': True,
             'message': 'Projet créé avec succès!',
@@ -1472,39 +1488,39 @@ def add_project():
 @app.route('/api/edit_project/<project_id>', methods=['POST'])
 @login_required
 def edit_project(project_id):
-    data = load_data()
-    project_index = next((i for i, project in enumerate(data['projects']) if project['id'] == project_id), None)
+    """Éditer un projet avec SQLAlchemy"""
+    user_id = session.get('user_id')
     
-    if project_index is not None:
-        try:
-            import json
-            update_data = json.loads(request.data)
-            
-            # Mettre à jour le projet avec les nouvelles données
-            project = data['projects'][project_index]
-            project.update({
-                'name': update_data.get('name', project['name']),
-                'status': update_data.get('status', project['status']),
-                'priority': update_data.get('priority', project['priority']),
-                'methodology': update_data.get('methodology', project['methodology']),
-                'description': update_data.get('description', project['description']),
-                'objectives': update_data.get('objectives', project['objectives']),
-                'progress': update_data.get('progress', project['progress']),
-                'updated_at': datetime.now().isoformat()
-            })
-            
-            # Gérer les dates si fournies
-            if update_data.get('start_date'):
-                project['start_date'] = update_data['start_date']
-            if update_data.get('end_date'):
-                project['end_date'] = update_data['end_date']
-            
-            save_data(data)
-            return jsonify({'success': True})
-        except Exception as e:
-            return jsonify({'success': False, 'error': str(e)})
-    
-    return jsonify({'success': False, 'error': 'Projet non trouvé'})
+    try:
+        update_data = request.get_json()
+        
+        # Trouver le projet dans SQLAlchemy
+        project = Project.query.filter_by(id=project_id, user_id=user_id).first()
+        
+        if not project:
+            return jsonify({'success': False, 'error': 'Projet non trouvé'})
+        
+        # Mettre à jour le projet
+        project.name = update_data.get('name', project.name)
+        project.status = update_data.get('status', project.status)
+        project.priority = update_data.get('priority', project.priority)
+        project.methodology = update_data.get('methodology', project.methodology)
+        project.description = update_data.get('description', project.description)
+        project.objectives = update_data.get('objectives', project.objectives)
+        project.progress = int(update_data.get('progress', project.progress))
+        project.start_date = update_data.get('start_date')
+        project.end_date = update_data.get('end_date')
+        project.updated_at = datetime.now()
+        
+        db.session.commit()
+        
+        # Notifier le dashboard
+        notify_widget_update('projects', user_id)
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/duplicate-project', methods=['POST'])
 @login_required
@@ -1545,32 +1561,36 @@ def duplicate_project():
 @app.route('/api/delete-project/<project_id>', methods=['DELETE'])
 @login_required
 def delete_project(project_id):
+    """Supprimer un projet avec SQLAlchemy"""
+    user_id = session.get('user_id')
+    
     try:
-        data = load_data()
+        # Trouver le projet dans SQLAlchemy
+        project = Project.query.filter_by(id=project_id, user_id=user_id).first()
         
-        # Supprimer le projet
-        project_index = next((i for i, project in enumerate(data['projects']) if project['id'] == project_id), None)
-        
-        if project_index is not None:
-            # Supprimer aussi les tâches associées au projet
-            project_tasks = data.get('project_tasks', [])
-            data['project_tasks'] = [task for task in project_tasks if task['project_id'] != project_id]
-            
-            # Supprimer le projet
-            data['projects'].pop(project_index)
-            save_data(data)
-            
-            return jsonify({
-                'success': True,
-                'message': 'Projet supprimé avec succès'
-            })
-        else:
+        if not project:
             return jsonify({
                 'success': False,
                 'message': 'Projet non trouvé'
             }), 404
+        
+        # Supprimer les tâches associées au projet
+        ProjectTask.query.filter_by(project_id=project_id).delete()
+        
+        # Supprimer le projet
+        db.session.delete(project)
+        db.session.commit()
+        
+        # Notifier le dashboard
+        notify_widget_update('projects', user_id)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Projet supprimé avec succès'
+        })
             
     except Exception as e:
+        db.session.rollback()
         return jsonify({
             'success': False,
             'message': f'Erreur lors de la suppression: {str(e)}'
@@ -1744,6 +1764,9 @@ def add_task_to_project(project_id):
         # Calculer la nouvelle progression du projet
         new_progress = calculate_project_progress(project_id)
         
+        # Notifier les widgets du dashboard
+        notify_widget_update('tasks', user_id)
+        
         # Retourner la tâche créée au format attendu
         task_response = {
             'id': task.id,
@@ -1820,7 +1843,13 @@ def delete_project_task(task_id):
         db.session.delete(task)
         db.session.commit()
         
-        return jsonify({'success': True})
+        # Calculer la nouvelle progression du projet
+        new_progress = calculate_project_progress(task.project_id)
+        
+        # Notifier les widgets du dashboard
+        notify_widget_update('tasks', user_id)
+        
+        return jsonify({'success': True, 'progress': new_progress})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -1855,6 +1884,9 @@ def update_task_status(task_id):
         
         # Calculer la nouvelle progression du projet
         new_progress = calculate_project_progress(task.project_id)
+        
+        # Notifier les widgets du dashboard
+        notify_widget_update('tasks', user_id)
         
         return jsonify({'success': True, 'progress': new_progress})
     except Exception as e:
@@ -2070,23 +2102,218 @@ def toggle_task_api(task_id):
     
     return jsonify({'success': False, 'error': 'Tâche non trouvée'})
 
+def sync_data_from_json_to_sqlalchemy(user_id):
+    """Synchroniser les données de l'ancien système JSON vers SQLAlchemy"""
+    try:
+        json_data = load_data()
+        
+        # Synchroniser les tâches
+        for task_data in json_data.get('tasks', []):
+            # Vérifier si la tâche existe déjà
+            existing_task = Task.query.filter_by(id=task_data.get('id'), user_id=user_id).first()
+            if not existing_task:
+                # Créer la tâche dans SQLAlchemy
+                task = Task(
+                    id=task_data.get('id'),
+                    user_id=user_id,
+                    name=task_data.get('name', ''),
+                    priority=task_data.get('priority', 'moyenne'),
+                    completed=task_data.get('completed', False),
+                    created_at=datetime.fromisoformat(task_data.get('created_at', datetime.now().isoformat()))
+                )
+                db.session.add(task)
+        
+        # Synchroniser les événements
+        for event_data in json_data.get('events', []):
+            existing_event = Event.query.filter_by(id=event_data.get('id'), user_id=user_id).first()
+            if not existing_event:
+                event = Event(
+                    id=event_data.get('id'),
+                    user_id=user_id,
+                    date=datetime.fromisoformat(event_data.get('date', datetime.now().date().isoformat())),
+                    time=event_data.get('time', ''),
+                    title=event_data.get('title', ''),
+                    category=event_data.get('category', 'personnel'),
+                    created_at=datetime.fromisoformat(event_data.get('created_at', datetime.now().isoformat()))
+                )
+                db.session.add(event)
+        
+        # Synchroniser les projets
+        for project_data in json_data.get('projects', []):
+            existing_project = Project.query.filter_by(id=project_data.get('id'), user_id=user_id).first()
+            if not existing_project:
+                project = Project(
+                    id=project_data.get('id'),
+                    user_id=user_id,
+                    name=project_data.get('name', ''),
+                    status=project_data.get('status', 'en-cours'),
+                    priority=project_data.get('priority', 'moyenne'),
+                    methodology=project_data.get('methodology', 'libre'),
+                    start_date=project_data.get('start_date'),
+                    end_date=project_data.get('end_date'),
+                    description=project_data.get('description', ''),
+                    objectives=project_data.get('objectives', ''),
+                    progress=int(project_data.get('progress', 0)),
+                    created_at=datetime.fromisoformat(project_data.get('created_at', datetime.now().isoformat()))
+                )
+                db.session.add(project)
+        
+        # Synchroniser les notes
+        for note_data in json_data.get('notes', []):
+            existing_note = Note.query.filter_by(id=note_data.get('id'), user_id=user_id).first()
+            if not existing_note:
+                note = Note(
+                    id=note_data.get('id'),
+                    user_id=user_id,
+                    title=note_data.get('title', ''),
+                    content=note_data.get('content', ''),
+                    created_at=datetime.fromisoformat(note_data.get('created_at', datetime.now().isoformat()))
+                )
+                db.session.add(note)
+        
+        db.session.commit()
+        print(f"Successfully synced data for user {user_id}")
+        return True
+    except Exception as e:
+        print(f"Error syncing data: {e}")
+        db.session.rollback()
+        return False
+
+@app.route('/api/test-data')
+@login_required
+def test_data():
+    """Route de test pour vérifier les données dans la base de données"""
+    user_id = session.get('user_id')
+    
+    # Vérifier les données dans chaque table
+    tasks_count = Task.query.filter_by(user_id=user_id).count()
+    events_count = Event.query.filter_by(user_id=user_id).count()
+    projects_count = Project.query.filter_by(user_id=user_id).count()
+    notes_count = Note.query.filter_by(user_id=user_id).count()
+    
+    # Vérifier les données dans l'ancien système JSON
+    try:
+        json_data = load_data()
+        json_tasks = len(json_data.get('tasks', []))
+        json_events = len(json_data.get('events', []))
+        json_projects = len(json_data.get('projects', []))
+        json_notes = len(json_data.get('notes', []))
+    except:
+        json_tasks = json_events = json_projects = json_notes = "ERROR"
+    
+    return jsonify({
+        'sqlalchemy': {
+            'tasks': tasks_count,
+            'events': events_count,
+            'projects': projects_count,
+            'notes': notes_count
+        },
+        'json': {
+            'tasks': json_tasks,
+            'events': json_events,
+            'projects': json_projects,
+            'notes': json_notes
+        }
+    })
+
+@app.route('/api/sync-data')
+@login_required
+def sync_data():
+    """Forcer la synchronisation des données de JSON vers SQLAlchemy"""
+    user_id = session.get('user_id')
+    
+    if sync_data_from_json_to_sqlalchemy(user_id):
+        return jsonify({'success': True, 'message': 'Data synchronized successfully'})
+    else:
+        return jsonify({'success': False, 'message': 'Error syncing data'})
+
+def notify_widget_update(data_type, user_id=None):
+    """
+    Notifie le dashboard que des données ont été modifiées
+    Cette fonction peut être étendue pour utiliser WebSocket ou d'autres méthodes de notification
+    """
+    try:
+        # Pour l'instant, on utilise une simple marque dans localStorage côté client
+        # Cette fonction est préparée pour des évolutions futures
+        pass
+    except Exception as e:
+        print(f"Erreur lors de la notification des widgets: {e}")
+
 @app.route('/api/widget-data')
 @login_required
 def get_widget_data():
-    data = load_data()
+    user_id = session.get('user_id')
     
-    # Get tasks and sort by most recently updated (created or updated)
-    tasks = data.get('tasks', [])
-    # Sort by most recently updated (created_at or updated_at)
+    # Get data from SQLAlchemy
+    tasks = get_user_tasks(user_id)
+    events = get_user_events(user_id)
+    projects = get_user_projects(user_id)
+    notes = get_user_notes(user_id)
+    
+    # Si toutes les données sont vides, essayer de synchroniser depuis JSON
+    if len(tasks) == 0 and len(events) == 0 and len(projects) == 0 and len(notes) == 0:
+        print("No data found in SQLAlchemy, attempting to sync from JSON...")
+        if sync_data_from_json_to_sqlalchemy(user_id):
+            # Récupérer les données à nouveau après synchronisation
+            tasks = get_user_tasks(user_id)
+            events = get_user_events(user_id)
+            projects = get_user_projects(user_id)
+            notes = get_user_notes(user_id)
+    
+    # Sort tasks by most recently updated (created_at or updated_at)
     sorted_tasks = sorted(tasks, key=lambda x: (
-        datetime.fromisoformat(x.get('updated_at', x.get('created_at', '1970-01-01')))
+        x.updated_at if x.updated_at else x.created_at
     ), reverse=True)
     
+    # Sort events by date (most recent first)
+    sorted_events = sorted(events, key=lambda x: x.date, reverse=True)
+    
+    # Sort projects by most recently updated
+    sorted_projects = sorted(projects, key=lambda x: x.created_at, reverse=True)
+    
+    # Sort notes by most recently updated
+    sorted_notes = sorted(notes, key=lambda x: x.updated_at if x.updated_at else x.created_at, reverse=True)
+    
     return jsonify({
-        'tasks': sorted_tasks[:5],  # Take 5 most recent
-        'events': data.get('events', [])[:10],
-        'projects': data.get('projects', [])[:5],
-        'mails': data.get('mails', [])[:5]
+        'tasks': [
+            {
+                'id': t.id,
+                'name': t.name,
+                'priority': t.priority,
+                'completed': t.completed,
+                'created_at': t.created_at.isoformat(),
+                'updated_at': t.updated_at.isoformat() if t.updated_at else None
+            } for t in sorted_tasks[:5]
+        ],
+        'events': [
+            {
+                'id': e.id,
+                'title': e.title,
+                'date': e.date,
+                'time': e.time,
+                'category': e.category,
+                'created_at': e.created_at.isoformat()
+            } for e in sorted_events[:10]
+        ],
+        'projects': [
+            {
+                'id': p.id,
+                'name': p.name,
+                'status': p.status,
+                'priority': p.priority,
+                'progress': p.progress,
+                'created_at': p.created_at.isoformat()
+            } for p in sorted_projects[:5]
+        ],
+        'notes': [
+            {
+                'id': n.id,
+                'title': n.title,
+                'content': n.content[:100] + '...' if len(n.content) > 100 else n.content,
+                'created_at': n.created_at.isoformat(),
+                'updated_at': n.updated_at.isoformat() if n.updated_at else None
+            } for n in sorted_notes[:5]
+        ]
     })
 
 @app.route('/api/add_note', methods=['POST'])

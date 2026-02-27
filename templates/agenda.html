@@ -121,6 +121,24 @@
 
 {% block scripts %}
 <script>
+// Function to notify dashboard of data changes
+function notifyDashboard(dataType) {
+    try {
+        localStorage.setItem(`widget_update_${dataType}`, JSON.stringify({
+            timestamp: Date.now()
+        }));
+        
+        // Remove the item after a short delay to prevent storage bloat
+        setTimeout(() => {
+            localStorage.removeItem(`widget_update_${dataType}`);
+        }, 1000);
+        
+        console.log(`Notified dashboard about ${dataType} update`);
+    } catch (error) {
+        console.error('Error notifying dashboard:', error);
+    }
+}
+
 // Données des événements depuis le template
 const events = {{ data.events|tojson }};
 let currentDate = new Date();
@@ -535,6 +553,8 @@ function saveEventEdit(eventId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // Notify dashboard
+            notifyDashboard('agenda');
             closeEditModal();
             location.reload(); // Recharger la page pour voir les changements
         } else {
@@ -556,8 +576,40 @@ function closeEditModal() {
 
 function deleteEvent(eventId) {
     if (confirm('Êtes-vous sûr de vouloir supprimer cet événement ?')) {
-        window.location.href = `/api/delete/events/${eventId}`;
+        fetch(`/api/delete_event/${eventId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Notify dashboard
+                notifyDashboard('agenda');
+                location.reload();
+            } else {
+                alert('Erreur lors de la suppression: ' + (data.error || 'Erreur inconnue'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur lors de la suppression');
+        });
     }
 }
+
+// Listen for form submission to add events
+document.addEventListener('DOMContentLoaded', function() {
+    const addEventForm = document.querySelector('form[action*="add_event"]');
+    if (addEventForm) {
+        addEventForm.addEventListener('submit', function(e) {
+            // Notify dashboard when event is added
+            setTimeout(() => {
+                notifyDashboard('agenda');
+            }, 100);
+        });
+    }
+});
 </script>
 {% endblock %}

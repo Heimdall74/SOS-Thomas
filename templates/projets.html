@@ -831,6 +831,24 @@
 // Fonctions pour la gestion des projets
 let projectsData = {{ data.projects|tojson }};
 
+// Function to notify dashboard of data changes
+function notifyDashboard(dataType) {
+    try {
+        localStorage.setItem(`widget_update_${dataType}`, JSON.stringify({
+            timestamp: Date.now()
+        }));
+        
+        // Remove the item after a short delay to prevent storage bloat
+        setTimeout(() => {
+            localStorage.removeItem(`widget_update_${dataType}`);
+        }, 1000);
+        
+        console.log(`Notified dashboard about ${dataType} update`);
+    } catch (error) {
+        console.error('Error notifying dashboard:', error);
+    }
+}
+
 function openCreateProjectModal() {
     document.getElementById('createProjectModal').classList.add('show');
     document.getElementById('createProjectForm').reset();
@@ -1100,6 +1118,8 @@ function deleteProject(projectId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                // Notify dashboard
+                notifyDashboard('projects');
                 location.reload();
             } else {
                 alert('Erreur lors de la suppression: ' + data.message);
@@ -1140,6 +1160,8 @@ document.getElementById('createProjectForm').addEventListener('submit', function
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // Notify dashboard
+            notifyDashboard('projects');
             closeCreateProjectModal();
             location.reload();
         } else {
@@ -1175,6 +1197,8 @@ document.getElementById('editProjectForm').addEventListener('submit', function(e
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // Notify dashboard
+            notifyDashboard('projects');
             closeEditProjectModal();
             location.reload();
         } else {

@@ -2059,6 +2059,11 @@ function deleteTaskById(taskId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // Update project progress in main page if provided
+            if (data.progress !== undefined) {
+                updateProjectProgressInMainPage('{{ project.id }}', data.progress);
+            }
+            
             // Refresh task list
             initializeTaskCheckboxView();
             
@@ -2112,6 +2117,11 @@ function saveTask(event) {
             if (data.success) {
                 closeTaskModal();
                 showFlashMessage('Tâche mise à jour avec succès', 'success');
+                
+                // Update project progress in main page if provided
+                if (data.progress !== undefined) {
+                    updateProjectProgressInMainPage('{{ project.id }}', data.progress);
+                }
                 
                 // Wait a bit for server to process, then refresh views
                 setTimeout(() => {
@@ -2186,6 +2196,11 @@ function saveTask(event) {
             if (data.success) {
                 closeTaskModal();
                 showFlashMessage('Tâche créée avec succès', 'success');
+                
+                // Update project progress in main page if provided
+                if (data.progress !== undefined) {
+                    updateProjectProgressInMainPage('{{ project.id }}', data.progress);
+                }
                 
                 // Wait a bit for server to process, then refresh views
                 setTimeout(() => {
@@ -4050,6 +4065,11 @@ function updateTaskStatus(taskId, newStatus) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // Update project progress in main page if provided
+            if (data.progress !== undefined) {
+                updateProjectProgressInMainPage('{{ project.id }}', data.progress);
+            }
+            
             // Update progress display
             const progressElements = document.querySelectorAll('.progress-value, #progressPercentage');
             progressElements.forEach(el => {

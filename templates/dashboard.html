@@ -171,7 +171,7 @@
                         </div>
                         <div class="shortcut-info">
                             <h3>Agenda</h3>
-                            <p>{{ data.events|length }} événements</p>
+                            <p id="shortcut-events-count">{{ data.events|length }} événements</p>
                         </div>
                     </a>
                     
@@ -181,7 +181,7 @@
                         </div>
                         <div class="shortcut-info">
                             <h3>Tâches</h3>
-                            <p>{{ data.tasks|length }} tâches</p>
+                            <p id="shortcut-tasks-count">{{ data.tasks|length }} tâches</p>
                         </div>
                     </a>
                     
@@ -191,7 +191,7 @@
                         </div>
                         <div class="shortcut-info">
                             <h3>Projets</h3>
-                            <p>{{ data.projects|length }} projets</p>
+                            <p id="shortcut-projects-count">{{ data.projects|length }} projets</p>
                         </div>
                     </a>
                     
@@ -201,7 +201,7 @@
                         </div>
                         <div class="shortcut-info">
                             <h3>Notes</h3>
-                            <p>{{ data.notes|length }} notes</p>
+                            <p id="shortcut-notes-count">{{ data.notes|length }} notes</p>
                         </div>
                     </a>
                     
@@ -211,7 +211,7 @@
                         </div>
                         <div class="shortcut-info">
                             <h3>Mails</h3>
-                            <p>{{ data.mails|length }} mails</p>
+                            <p id="shortcut-mails-count">{{ data.mails|length }} mails</p>
                         </div>
                     </a>
                     
@@ -618,6 +618,9 @@ async function toggleTaskComplete(checkbox, taskId) {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async function() {
     await loadWidgetData();
+    
+    // Update stats cards and shortcuts with initial data
+    updateStatsCards();
     
     // Re-initialize task checkboxes
     document.querySelectorAll('.task-checkbox').forEach(checkbox => {
@@ -1628,7 +1631,27 @@ if (window.innerWidth <= 768) {
         cursor: pointer;
         font-size: 1.25rem;
     `;
-    // Listen for data updates from other pages
+    // Function to notify dashboard of data changes
+function notifyDashboard(dataType, data = null) {
+    try {
+        localStorage.setItem(`widget_update_${dataType}`, JSON.stringify({
+            timestamp: Date.now(),
+            data: data,
+            type: dataType
+        }));
+        
+        // Remove the item after a short delay to prevent storage bloat
+        setTimeout(() => {
+            localStorage.removeItem(`widget_update_${dataType}`);
+        }, 1000);
+        
+        console.log(`Notified dashboard about ${dataType} update`);
+    } catch (error) {
+        console.error('Error notifying dashboard:', error);
+    }
+}
+
+// Listen for data updates from other pages
 window.addEventListener('storage', function(e) {
     if (e.key && e.key.startsWith('widget_data_')) {
         const dataType = e.key.replace('widget_data_', '');
@@ -1655,10 +1678,85 @@ window.addEventListener('storage', function(e) {
                 }
             }
         }
+        
+        // Update stats cards and shortcuts
+        updateStatsCards();
+    } else if (e.key && e.key.startsWith('widget_update_')) {
+        // Handle update notifications from other pages
+        const dataType = e.key.replace('widget_update_', '');
+        console.log(`Received update notification for ${dataType}`);
+        
+        // Refresh the specific widget and update shortcuts
+        refreshWidget(dataType);
     }
 });
 
-// Function to refresh all widgets
+// Function to refresh a specific widget
+function refreshWidget(dataType) {
+    console.log(`Refreshing ${dataType} widget...`);
+    
+    // Fetch fresh data for this specific widget type
+    fetch('/api/widget-data')
+        .then(response => response.json())
+        .then(data => {
+            widgetData[dataType] = data[dataType];
+            
+            // Update the specific widget
+            const widget = document.querySelector(`[data-widget-type="${dataType}"]`);
+            if (widget) {
+                const widgetContent = widget.querySelector('.widget-content');
+                if (widgetContent) {
+                    switch(dataType) {
+                        case 'tasks':
+                            widgetContent.innerHTML = getTasksWidget();
+                            break;
+                        case 'projets':
+                            widgetContent.innerHTML = getProjetsWidget();
+                            break;
+                        case 'agenda':
+                            widgetContent.innerHTML = getAgendaWidget();
+                            break;
+                        case 'mails':
+                            widgetContent.innerHTML = getMailsWidget();
+                            break;
+                    }
+                }
+            }
+            
+            // Update stats cards and shortcuts
+            updateStatsCards();
+        })
+        .catch(error => console.error(`Error refreshing ${dataType} widget:`, error));
+}
+
+// Function to update stats cards
+// Function to update stats cards
+function updateStatsCards() {
+    // Update the stats in the header
+    const eventsStat = document.querySelector('.stat-card:nth-child(1) .stat-value');
+    const tasksStat = document.querySelector('.stat-card:nth-child(2) .stat-value');
+    const projectsStat = document.querySelector('.stat-card:nth-child(3) .stat-value');
+    const notesStat = document.querySelector('.stat-card:nth-child(4) .stat-value');
+    
+    if (eventsStat) eventsStat.textContent = widgetData.events ? widgetData.events.length : 0;
+    if (tasksStat) tasksStat.textContent = widgetData.tasks ? widgetData.tasks.length : 0;
+    if (projectsStat) projectsStat.textContent = widgetData.projects ? widgetData.projects.length : 0;
+    if (notesStat) notesStat.textContent = widgetData.notes ? widgetData.notes.length : 0;
+    
+    // Update shortcut cards
+    const eventsShortcut = document.getElementById('shortcut-events-count');
+    const tasksShortcut = document.getElementById('shortcut-tasks-count');
+    const projectsShortcut = document.getElementById('shortcut-projects-count');
+    const notesShortcut = document.getElementById('shortcut-notes-count');
+    const mailsShortcut = document.getElementById('shortcut-mails-count');
+    
+    if (eventsShortcut) eventsShortcut.textContent = `${widgetData.events ? widgetData.events.length : 0} événements`;
+    if (tasksShortcut) tasksShortcut.textContent = `${widgetData.tasks ? widgetData.tasks.length : 0} tâches`;
+    if (projectsShortcut) projectsShortcut.textContent = `${widgetData.projects ? widgetData.projects.length : 0} projets`;
+    if (notesShortcut) notesShortcut.textContent = `${widgetData.notes ? widgetData.notes.length : 0} notes`;
+    if (mailsShortcut) mailsShortcut.textContent = `${widgetData.mails ? widgetData.mails.length : 0} mails`;
+}
+
 function refreshAllWidgets() {
     console.log('Refreshing all widgets...');
     // Fetch fresh data from server
@@ -1689,6 +1787,9 @@ function refreshAllWidgets() {
                     }
                 }
             });
+            
+            // Update stats cards
+            updateStatsCards();
         })
         .catch(error => console.error('Error refreshing widgets:', error));
 }

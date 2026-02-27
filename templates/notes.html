@@ -2029,6 +2029,24 @@ async function loadFromServer() {
     }
 }
 
+// Function to notify dashboard of data changes
+function notifyDashboard(dataType) {
+    try {
+        localStorage.setItem(`widget_update_${dataType}`, JSON.stringify({
+            timestamp: Date.now()
+        }));
+        
+        // Remove the item after a short delay to prevent storage bloat
+        setTimeout(() => {
+            localStorage.removeItem(`widget_update_${dataType}`);
+        }, 1000);
+        
+        console.log(`Notified dashboard about ${dataType} update`);
+    } catch (error) {
+        console.error('Error notifying dashboard:', error);
+    }
+}
+
 // Système de sauvegarde automatique
 let autoSaveInterval;
 
@@ -2079,6 +2097,9 @@ async function syncWithServer() {
             const result = await response.json();
             console.log('✅ Synchronisation réussie:', result.message);
             showNotification('Données sauvegardées avec succès!', 'success');
+            
+            // Notify dashboard about notes update
+            notifyDashboard('notes');
         } else {
             console.error('❌ Erreur de synchronisation:', response.statusText);
             showNotification('Erreur de synchronisation', 'error');

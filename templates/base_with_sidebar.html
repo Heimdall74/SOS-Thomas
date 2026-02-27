@@ -249,6 +249,9 @@
                             <h2 class="text-2xl font-bold text-gray-800">{% block page_title %}SOS Thomas{% endblock %}</h2>
                         </div>
                         <div class="flex items-center space-x-4">
+                            <button onclick="toggleDarkMode()" class="header-btn p-2 rounded-lg hover:bg-gray-100">
+                                <span id="darkModeIcon">🌙</span>
+                            </button>
                             <button onclick="toggleTheme()" class="header-btn p-2 rounded-lg hover:bg-gray-100">
                                 <i class="fas fa-palette"></i>
                             </button>
@@ -373,6 +376,37 @@
             document.documentElement.style.setProperty('--secondary-color', randomColor.secondary);
             document.documentElement.style.setProperty('--accent-color', randomColor.accent);
         }
+        
+        // Dark mode functions
+        function toggleDarkMode() {
+            const isDarkMode = document.body.classList.toggle('dark-mode');
+            
+            // Sauvegarder l'état du thème
+            localStorage.setItem('darkMode', isDarkMode);
+            
+            // Mettre à jour l'icône du bouton
+            const moonButton = document.querySelector('#darkModeIcon');
+            if (moonButton) {
+                moonButton.textContent = isDarkMode ? '☀️' : '🌙';
+            }
+        }
+        
+        // Charger l'état du thème au démarrage
+        function loadTheme() {
+            const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+            if (savedDarkMode) {
+                document.body.classList.add('dark-mode');
+                const moonButton = document.querySelector('#darkModeIcon');
+                if (moonButton) {
+                    moonButton.textContent = '☀️';
+                }
+            }
+        }
+        
+        // Charger le thème au démarrage
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTheme();
+        });
 
         // Auto-hide flash messages
         setTimeout(() => {
@@ -382,6 +416,293 @@
             }
         }, 5000);
     </script>
+    
+    <!-- Styles pour le mode sombre -->
+    <style>
+    /* Mode sombre - Palette sombre mais lisible */
+    .dark-mode {
+        background-color: #1a1a1a !important;
+        color: #e5e5e5 !important;
+    }
+    
+    /* Fond principaux - version sombre */
+    .dark-mode .bg-white {
+        background-color: #2d2d2d !important;
+    }
+    
+    .dark-mode .bg-gray-50 {
+        background-color: #1a1a1a !important;
+    }
+    
+    .dark-mode .bg-gray-100 {
+        background-color: #262626 !important;
+    }
+    
+    .dark-mode .bg-gray-200 {
+        background-color: #404040 !important;
+    }
+    
+    .dark-mode .bg-gray-300 {
+        background-color: #525252 !important;
+    }
+    
+    /* Bordures - version sombre */
+    .dark-mode .border-gray-200 {
+        border-color: #404040 !important;
+    }
+    
+    .dark-mode .border-gray-300 {
+        border-color: #525252 !important;
+    }
+    
+    /* Textes - version claire pour lisibilité sur fond sombre */
+    .dark-mode .text-gray-800 {
+        color: #e5e5e5 !important;
+    }
+    
+    .dark-mode .text-gray-700 {
+        color: #d4d4d4 !important;
+    }
+    
+    .dark-mode .text-gray-600 {
+        color: #a3a3a3 !important;
+    }
+    
+    .dark-mode .text-gray-500 {
+        color: #8b8b8b !important;
+    }
+    
+    .dark-mode .text-gray-400 {
+        color: #737373 !important;
+    }
+    
+    /* Couleurs spécifiques - version visible sur fond sombre */
+    .dark-mode .text-blue-700 {
+        color: #60a5fa !important;
+    }
+    
+    .dark-mode .text-red-600 {
+        color: #f87171 !important;
+    }
+    
+    .dark-mode .text-green-600 {
+        color: #4ade80 !important;
+    }
+    
+    /* Header et sidebar - version sombre */
+    .dark-mode .header {
+        background-color: #262626 !important;
+        border-color: #404040 !important;
+    }
+    
+    .dark-mode .sidebar {
+        background-color: #1f1f1f !important;
+        border-color: #404040 !important;
+    }
+    
+    /* Widgets et cartes - version sombre */
+    .dark-mode .widget {
+        background-color: #2d2d2d !important;
+        border-color: #404040 !important;
+    }
+    
+    .dark-mode .widget-header {
+        border-color: #404040 !important;
+    }
+    
+    .dark-mode .widget-title {
+        color: #e5e5e5 !important;
+    }
+    
+    .dark-mode .stat-card {
+        background-color: #262626 !important;
+        border-color: #404040 !important;
+    }
+    
+    .dark-mode .shortcut-card {
+        background-color: #262626 !important;
+        border-color: #404040 !important;
+    }
+    
+    .dark-mode .shortcut-card:hover {
+        background-color: #404040 !important;
+    }
+    
+    /* Tâches - version sombre et lisible */
+    .dark-mode .task-item {
+        background-color: #333333 !important;
+        border-color: #525252 !important;
+    }
+    
+    .dark-mode .task-checkbox {
+        border-color: #8b8b8b !important;
+        background-color: #404040 !important;
+    }
+    
+    .dark-mode .task-text {
+        color: #d4d4d4 !important;
+    }
+    
+    .dark-mode .task-text.completed {
+        color: #8b8b8b !important;
+    }
+    
+    /* Projets */
+    .dark-mode .project-card {
+        background-color: #2d2d2d !important;
+        border-color: #404040 !important;
+    }
+    
+    /* Événements */
+    .dark-mode .event-item {
+        background-color: #333333 !important;
+        border-color: #525252 !important;
+    }
+    
+    /* Notes */
+    .dark-mode .note-item {
+        background-color: #333333 !important;
+        border-color: #525252 !important;
+    }
+    
+    /* Modales - version sombre */
+    .dark-mode .modal {
+        background-color: rgba(26, 26, 26, 0.9) !important;
+    }
+    
+    .dark-mode .modal-content {
+        background-color: #2d2d2d !important;
+        border-color: #404040 !important;
+    }
+    
+    /* Formulaires - version sombre et lisible */
+    .dark-mode .form-input,
+    .dark-mode input,
+    .dark-mode textarea,
+    .dark-mode select {
+        background-color: #333333 !important;
+        border-color: #525252 !important;
+        color: #e5e5e5 !important;
+    }
+    
+    .dark-mode .form-input::placeholder,
+    .dark-mode input::placeholder,
+    .dark-mode textarea::placeholder {
+        color: #8b8b8b !important;
+    }
+    
+    /* Boutons - version visible sur fond sombre */
+    .dark-mode .btn-primary {
+        background-color: #3b82f6 !important;
+        color: #ffffff !important;
+    }
+    
+    .dark-mode .btn-secondary {
+        background-color: #404040 !important;
+        border-color: #525252 !important;
+        color: #e5e5e5 !important;
+    }
+    
+    .dark-mode .header-btn {
+        background-color: #333333 !important;
+        color: #d4d4d4 !important;
+    }
+    
+    .dark-mode .header-btn:hover {
+        background-color: #404040 !important;
+    }
+    
+    /* Dropdowns et menus */
+    .dark-mode .theme-dropdown {
+        background-color: #2d2d2d !important;
+        border-color: #404040 !important;
+    }
+    
+    .dark-mode .theme-header {
+        border-color: #404040 !important;
+    }
+    
+    .dark-mode .theme-title {
+        color: #e5e5e5 !important;
+    }
+    
+    .dark-mode .theme-item {
+        border-color: #404040 !important;
+    }
+    
+    .dark-mode .theme-item:hover {
+        background-color: #404040 !important;
+    }
+    
+    .dark-mode .theme-name {
+        color: #e5e5e5 !important;
+    }
+    
+    .dark-mode .theme-description {
+        color: #8b8b8b !important;
+    }
+    
+    /* Notifications */
+    .dark-mode .notifications-panel {
+        background-color: #2d2d2d !important;
+        border-color: #404040 !important;
+    }
+    
+    .dark-mode .notification-item {
+        border-color: #404040 !important;
+    }
+    
+    /* Recherche */
+    .dark-mode .search-input {
+        background-color: #333333 !important;
+        border-color: #525252 !important;
+        color: #e5e5e5 !important;
+    }
+    
+    .dark-mode .search-input::placeholder {
+        color: #8b8b8b !important;
+    }
+    
+    /* Profil utilisateur */
+    .dark-mode .user-profile {
+        border-color: #404040 !important;
+    }
+    
+    /* Calendrier */
+    .dark-mode .calendar-grid {
+        background-color: #1a1a1a !important;
+    }
+    
+    .dark-mode .calendar-day {
+        background-color: #262626 !important;
+        border-color: #404040 !important;
+        color: #d4d4d4 !important;
+    }
+    
+    .dark-mode .calendar-day:hover {
+        background-color: #333333 !important;
+    }
+    
+    /* Tableaux */
+    .dark-mode table {
+        background-color: #1a1a1a !important;
+        color: #d4d4d4 !important;
+    }
+    
+    .dark-mode th {
+        background-color: #262626 !important;
+        color: #e5e5e5 !important;
+        border-color: #404040 !important;
+    }
+    
+    .dark-mode td {
+        border-color: #404040 !important;
+    }
+    
+    .dark-mode tr:hover {
+        background-color: #262626 !important;
+    }
+    </style>
     
     {% block scripts %}{% endblock %}
 </body>

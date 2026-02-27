@@ -463,6 +463,24 @@ function closeEditModal() {
     currentEditingTaskId = null;
 }
 
+// Function to notify dashboard of data changes
+function notifyDashboard(dataType) {
+    try {
+        localStorage.setItem(`widget_update_${dataType}`, JSON.stringify({
+            timestamp: Date.now()
+        }));
+        
+        // Remove the item after a short delay to prevent storage bloat
+        setTimeout(() => {
+            localStorage.removeItem(`widget_update_${dataType}`);
+        }, 1000);
+        
+        console.log(`Notified dashboard about ${dataType} update`);
+    } catch (error) {
+        console.error('Error notifying dashboard:', error);
+    }
+}
+
 function deleteProjectTask(taskId) {
     if (confirm('Êtes-vous sûr de vouloir supprimer cette tâche de projet ?')) {
         fetch(`/api/delete_task/${taskId}`, {
@@ -474,6 +492,8 @@ function deleteProjectTask(taskId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                // Notify dashboard
+                notifyDashboard('tasks');
                 location.reload();
             } else {
                 alert('Erreur lors de la suppression');
@@ -499,6 +519,8 @@ function toggleProjectTaskStatus(taskId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // Notify dashboard
+            notifyDashboard('tasks');
             location.reload();
         } else {
             alert('Erreur lors de la mise à jour');
