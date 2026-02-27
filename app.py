@@ -13,6 +13,10 @@ from werkzeug.utils import secure_filename
 import requests
 import base64
 from urllib.parse import urlencode
+from dotenv import load_dotenv
+
+# Charger les variables d'environnement depuis le fichier .env
+load_dotenv()
 
 # Configuration des chemins
 BASE_DIR = Path(__file__).parent
