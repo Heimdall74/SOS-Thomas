@@ -1,62 +1,48 @@
 #!/usr/bin/env python3
 """
-Script pour créer un utilisateur administrateur par défaut pour SOS Thomas
+Script pour créer un utilisateur admin pour le développement local
 """
 
-import json
 import os
+import sys
 from pathlib import Path
-from datetime import datetime
-import uuid
-from werkzeug.security import generate_password_hash
 
-# Configuration
-BASE_DIR = Path(__file__).parent
-DATA_DIR = BASE_DIR / 'data'
-USERS_FILE = DATA_DIR / 'users.json'
+# Ajouter le répertoire parent au path
+sys.path.append(str(Path(__file__).parent))
 
-def create_default_admin():
-    """Crée un utilisateur administrateur par défaut"""
-    
-    # Créer le dossier data s'il n'existe pas
-    os.makedirs(DATA_DIR, exist_ok=True)
-    
-    # Informations de l'administrateur par défaut
-    admin_user = {
-        'id': str(uuid.uuid4()),
-        'username': 'admin',
-        'email': 'admin@sosthomas.local',
-        'password': generate_password_hash('admin123'),
-        'created_at': datetime.now().isoformat()
-    }
-    
-    # Charger les utilisateurs existants ou créer un nouveau dictionnaire
-    users = {}
-    if os.path.exists(USERS_FILE):
-        with open(USERS_FILE, 'r', encoding='utf-8') as f:
-            users = json.load(f)
-    
-    # Ajouter l'administrateur s'il n'existe pas déjà
-    if not any(user['username'] == 'admin' for user in users.values()):
-        users[admin_user['id']] = admin_user
-        
-        # Sauvegarder les utilisateurs
-        with open(USERS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(users, f, indent=2, ensure_ascii=False)
-        
-        print("Utilisateur administrateur cree avec succes !")
-        print("\nIdentifiants de connexion :")
-        print("   Nom d'utilisateur : admin")
-        print("   Mot de passe      : admin123")
-        print("   Email            : admin@sosthomas.local")
-        print("\nVous pouvez maintenant vous connecter avec ces identifiants.")
-        print("\nPensez a changer le mot de passe apres votre premiere connexion !")
-        
-    else:
-        print("Un utilisateur 'admin' existe deja.")
-        print("Utilisez les identifiants suivants :")
-        print("   Nom d'utilisateur : admin")
-        print("   Mot de passe      : admin123")
+from app import app, db, User
 
-if __name__ == "__main__":
-    create_default_admin()
+def create_admin_user():
+    """Créer un utilisateur admin pour le développement local"""
+    
+    with app.app_context():
+        # Vérifier si l'utilisateur admin existe déjà
+        existing_admin = User.query.filter_by(username='admin').first()
+        if existing_admin:
+            print("ERREUR: L'utilisateur 'admin' existe déjà avec l'email:", existing_admin.email)
+            print("OK: Vous pouvez vous connecter avec:")
+            print("   Username: admin")
+            print("   Password: admin123")
+            return
+        
+        # Créer l'utilisateur admin
+        admin_user = User(
+            username='admin',
+            email='admin@local.dev'
+        )
+        admin_user.set_password('admin123')
+        
+        db.session.add(admin_user)
+        db.session.commit()
+        
+        print("SUCCES: Utilisateur admin créé avec succès!")
+        print("Identifiants de connexion:")
+        print("   Username: admin")
+        print("   Email: admin@local.dev")
+        print("   Password: admin123")
+        print("")
+        print("Lancez l'application avec: python app.py")
+        print("Connectez-vous sur: http://localhost:5000")
+
+if __name__ == '__main__':
+    create_admin_user()

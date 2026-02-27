@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session, send_file
 from flask_wtf import FlaskForm
 from flask_sqlalchemy import SQLAlchemy
+from flask_session import Session
 from wtforms import StringField, TextAreaField, SelectField, DateField, DateTimeField, FileField, SubmitField, PasswordField, IntegerField
 from wtforms.validators import DataRequired, Email, URL, EqualTo, Length, NumberRange
 import json
@@ -24,9 +25,8 @@ BASE_DIR = Path(__file__).parent
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '193a2877496f2a1385ef21f1fe4388925852ee5d959a380a64b4fb0195b424c3'
 app.config['UPLOAD_FOLDER'] = BASE_DIR / 'static' / 'uploads'
-app.config['SESSION_TYPE'] = 'filesystem'
+# Utiliser des cookies signés simples au lieu de sessions filesystem pour éviter les problèmes d'encodage
 app.config['SESSION_PERMANENT'] = True
-app.config['SESSION_USE_SIGNER'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 
 # Configuration de la base de données
@@ -486,6 +486,9 @@ def create_project(user_id, name, status, priority, methodology, start_date, end
 def get_user_tasks(user_id):
     return Task.query.filter_by(user_id=user_id).all()
 
+def get_user_project_tasks(user_id):
+    return db.session.query(ProjectTask, Project).join(Project).filter(Project.user_id == user_id).all()
+
 def create_task(user_id, name, priority):
     task = Task(user_id=user_id, name=name, priority=priority)
     db.session.add(task)
@@ -822,14 +825,27 @@ def projets():
 def taches():
     user_id = session.get('user_id')
     tasks = get_user_tasks(user_id)
+    project_tasks_with_projects = get_user_project_tasks(user_id)
     projects = get_user_projects(user_id)
     form = TaskForm()
     project_form = ProjectTaskForm()
     
     # Convertir en format compatible avec les templates
     data = {
-        'tasks': [{'id': t.id, 'name': t.name, 'priority': t.priority, 'completed': t.completed} for t in tasks],
-        'projects': [{'id': p.id, 'name': p.name} for p in projects]
+        'tasks': [{'id': t.id, 'name': t.name, 'priority': t.priority, 'completed': t.completed, 'created_at': t.created_at.isoformat() if t.created_at else ''} for t in tasks],
+        'projects': [{'id': p.id, 'name': p.name} for p in projects],
+        'project_tasks': [
+            {
+                'id': pt.id, 
+                'name': pt.name, 
+                'priority': pt.priority, 
+                'completed': pt.completed, 
+                'project_id': pt.project_id, 
+                'status': 'terminé' if pt.completed else 'a-faire',
+                'created_at': pt.created_at.isoformat() if pt.created_at else ''
+            } 
+            for pt, p in project_tasks_with_projects
+        ]
     }
     project_form = ProjectTaskForm()
     
@@ -1394,6 +1410,14 @@ def add_project():
         project_data = request.get_json()
         user_id = session.get('user_id')
         
+        # Vérifier que l'utilisateur existe dans la base de données
+        user = User.query.filter_by(id=user_id).first()
+        if not user:
+            return jsonify({
+                'success': False,
+                'message': 'Utilisateur non trouvé. Veuillez vous reconnecter.'
+            }), 401
+        
         if not project_data:
             return jsonify({
                 'success': False,
@@ -1598,27 +1622,24 @@ def reorder_projects():
         }), 500
 
 def calculate_project_progress(project_id):
-    data = load_data()
-    project_tasks = data.get('project_tasks', [])
-    project_tasks = [task for task in project_tasks if task['project_id'] == project_id]
+    # Récupérer les tâches du projet depuis la base de données
+    project_tasks = ProjectTask.query.filter_by(project_id=project_id).all()
     
     if not project_tasks:
         return 0
     
-    # Compter les tâches terminées (statut 'termine', 'fait', 'terminé', 'réalisée')
-    completed_tasks = len([task for task in project_tasks if task.get('status') in ['termine', 'fait', 'terminé', 'réalisée']])
+    # Compter les tâches terminées (completed = True)
+    completed_tasks = len([task for task in project_tasks if task.completed])
     total_tasks = len(project_tasks)
     
     # Calculer le pourcentage
     progress = round((completed_tasks / total_tasks) * 100)
     
-    # Mettre à jour la progression dans les données du projet
-    for project in data.get('projects', []):
-        if project['id'] == project_id:
-            project['progress'] = progress
-            break
-    
-    save_data(data)
+    # Mettre à jour la progression dans le projet
+    project = Project.query.get(project_id)
+    if project:
+        project.progress = progress
+        db.session.commit()
     
     return progress
 
@@ -1632,19 +1653,37 @@ def project_details(project_id):
     
     if project:
         # Debug: Vérifier les données du projet
-        print(f"🔍 DEBUG - Project ID: {project_id}")
-        print(f"🔍 DEBUG - Project name: {project.name}")
-        print(f"🔍 DEBUG - Project description: {project.description}")
+        print(f"DEBUG - Project ID: {project_id}")
+        print(f"DEBUG - Project name: {project.name}")
+        print(f"DEBUG - Project description: {project.description}")
         
         # Calculer la progression du projet
         progress = calculate_project_progress(project_id)
         
-        # Récupérer les tâches du projet depuis le JSON (pour l'instant)
-        data = load_data()
-        project_tasks = data.get('project_tasks', [])
-        project_tasks = [task for task in project_tasks if task['project_id'] == project_id]
+        # Récupérer les tâches du projet depuis la base de données
+        project_tasks_db = ProjectTask.query.filter_by(project_id=project_id).all()
+        project_tasks = []
+        for task in project_tasks_db:
+            # Vérifier si la tâche a un statut spécifique stocké, sinon utiliser la logique par défaut
+            if hasattr(task, 'status') and task.status:
+                status = task.status
+            else:
+                # Logique par défaut : si complétée -> terminé, sinon -> a-faire
+                status = 'terminé' if task.completed else 'a-faire'
+            
+            project_tasks.append({
+                'id': task.id,
+                'project_id': task.project_id,
+                'name': task.name,
+                'priority': task.priority,
+                'completed': task.completed,
+                'status': status,
+                'description': getattr(task, 'description', ''),
+                'created_at': getattr(task, 'created_at', datetime.now()).isoformat()
+            })
         
         # Récupérer les fichiers du projet depuis le JSON
+        data = load_data()
         project_files = data.get('project_files', [])
         project_files = [file for file in project_files if file['project_id'] == project_id]
         
@@ -1679,58 +1718,108 @@ def project_details(project_id):
 @app.route('/api/add_task_to_project/<project_id>', methods=['POST'])
 @login_required
 def add_task_to_project(project_id):
-    data = load_data()
-    
     try:
+        user_id = session.get('user_id')
         task_data = request.get_json()
         
-        # S'assurer que project_tasks existe
-        if 'project_tasks' not in data:
-            data['project_tasks'] = []
+        # Vérifier que le projet appartient à l'utilisateur
+        project = Project.query.filter_by(id=project_id, user_id=user_id).first()
+        if not project:
+            return jsonify({'success': False, 'error': 'Projet non trouvé'})
         
-        task = {
-            'id': str(uuid.uuid4()),
-            'project_id': project_id,
-            'name': task_data.get('name', ''),
-            'description': task_data.get('description', ''),
-            'priority': task_data.get('priority', 'moyenne'),
-            'status': task_data.get('status', 'a-faire'),
-            'assignee': task_data.get('assignee', ''),
-            'due_date': task_data.get('dueDate', ''),
-            'tags': task_data.get('tags', []),
-            'created_at': datetime.now().isoformat(),
-            'updated_at': datetime.now().isoformat()
-        }
+        # Synchroniser le champ completed avec le statut
+        completed_statuses = ['terminé', 'termine', 'réalisée', 'fait']
+        is_completed = task_data.get('status', 'a-faire') in completed_statuses
         
-        data['project_tasks'].append(task)
-        save_data(data)
+        # Créer la tâche dans la base de données
+        task = ProjectTask(
+            project_id=project_id,
+            name=task_data.get('name', ''),
+            priority=task_data.get('priority', 'moyenne'),
+            completed=is_completed
+        )
+        
+        db.session.add(task)
+        db.session.commit()
         
         # Calculer la nouvelle progression du projet
         new_progress = calculate_project_progress(project_id)
         
-        return jsonify({'success': True, 'task': task, 'progress': new_progress})
+        # Retourner la tâche créée au format attendu
+        task_response = {
+            'id': task.id,
+            'project_id': task.project_id,
+            'name': task.name,
+            'priority': task.priority,
+            'completed': task.completed,
+            'status': task_data.get('status', 'a-faire'),
+            'description': task_data.get('description', ''),
+            'assignee': task_data.get('assignee', ''),
+            'due_date': task_data.get('dueDate', ''),
+            'tags': task_data.get('tags', []),
+            'created_at': task.created_at.isoformat() if task.created_at else datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        return jsonify({'success': True, 'task': task_response, 'progress': new_progress})
     except Exception as e:
+        db.session.rollback()
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/get_project_tasks/<project_id>')
 @login_required
 def get_project_tasks(project_id):
-    data = load_data()
-    project_tasks = data.get('project_tasks', [])
-    project_tasks = [task for task in project_tasks if task['project_id'] == project_id]
-    
-    return jsonify({'success': True, 'tasks': project_tasks})
+    try:
+        user_id = session.get('user_id')
+        
+        # Vérifier que le projet appartient à l'utilisateur
+        project = Project.query.filter_by(id=project_id, user_id=user_id).first()
+        if not project:
+            return jsonify({'success': False, 'error': 'Projet non trouvé'})
+        
+        # Récupérer les tâches depuis la base de données
+        project_tasks_db = ProjectTask.query.filter_by(project_id=project_id).all()
+        project_tasks = []
+        for task in project_tasks_db:
+            # Vérifier si la tâche a un statut spécifique stocké, sinon utiliser la logique par défaut
+            if hasattr(task, 'status') and task.status:
+                status = task.status
+            else:
+                # Logique par défaut : si complétée -> terminé, sinon -> a-faire
+                status = 'terminé' if task.completed else 'a-faire'
+            
+            project_tasks.append({
+                'id': task.id,
+                'project_id': task.project_id,
+                'name': task.name,
+                'priority': task.priority,
+                'completed': task.completed,
+                'status': status,
+                'description': getattr(task, 'description', ''),
+                'created_at': getattr(task, 'created_at', datetime.now()).isoformat()
+            })
+        
+        return jsonify({'success': True, 'tasks': project_tasks})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/delete_task/<task_id>', methods=['DELETE'])
 @login_required
 def delete_project_task(task_id):
-    data = load_data()
-    
     try:
-        project_tasks = data.get('project_tasks', [])
-        project_tasks = [task for task in project_tasks if task['id'] != task_id]
-        data['project_tasks'] = project_tasks
-        save_data(data)
+        user_id = session.get('user_id')
+        
+        # Récupérer la tâche avec vérification que l'utilisateur a le droit
+        task = db.session.query(ProjectTask).join(Project).filter(
+            ProjectTask.id == task_id,
+            Project.user_id == user_id
+        ).first()
+        
+        if not task:
+            return jsonify({'success': False, 'error': 'Tâche non trouvée'})
+        
+        db.session.delete(task)
+        db.session.commit()
         
         return jsonify({'success': True})
     except Exception as e:
@@ -1739,47 +1828,34 @@ def delete_project_task(task_id):
 @app.route('/api/update_task/<task_id>', methods=['POST'])
 @login_required
 def update_task_status(task_id):
-    data = load_data()
-    
     try:
+        user_id = session.get('user_id')
         task_data = request.get_json()
-        project_tasks = data.get('project_tasks', [])
         
-        for task in project_tasks:
-            if task['id'] == task_id:
-                old_status = task.get('status', '')
-                new_status = task_data.get('status', task['status'])
-                
-                task.update({
-                    'name': task_data.get('name', task['name']),
-                    'description': task_data.get('description', task['description']),
-                    'priority': task_data.get('priority', task['priority']),
-                    'status': new_status,
-                    'assignee': task_data.get('assignee', task['assignee']),
-                    'due_date': task_data.get('dueDate', task['due_date']),
-                    'tags': task_data.get('tags', task.get('tags', [])),
-                    'updated_at': datetime.now().isoformat()
-                })
-                
-                # Synchroniser le champ completed avec le statut
-                completed_statuses = ['termine', 'fait', 'terminé', 'réalisée']
-                task['completed'] = new_status in completed_statuses
-                
-                # Si la tâche passe au statut "terminé" pour la première fois
-                if new_status in completed_statuses and old_status not in completed_statuses:
-                    task['completed_at'] = datetime.now().isoformat()
-                elif new_status not in completed_statuses:
-                    # Si la tâche n'est plus terminée, on retire la date de complétion
-                    task.pop('completed_at', None)
-                
-                project_id = task['project_id']
-                break
+        # Récupérer la tâche avec vérification que l'utilisateur a le droit
+        task = db.session.query(ProjectTask).join(Project).filter(
+            ProjectTask.id == task_id,
+            Project.user_id == user_id
+        ).first()
         
-        data['project_tasks'] = project_tasks
-        save_data(data)
+        if not task:
+            return jsonify({'success': False, 'error': 'Tâche non trouvée'})
+        
+        # Mettre à jour les champs de la tâche
+        if 'name' in task_data:
+            task.name = task_data['name']
+        if 'priority' in task_data:
+            task.priority = task_data['priority']
+        if 'status' in task_data:
+            new_status = task_data['status']
+            # Synchroniser le champ completed avec le statut
+            completed_statuses = ['termine', 'fait', 'terminé', 'réalisée']
+            task.completed = new_status in completed_statuses
+        
+        db.session.commit()
         
         # Calculer la nouvelle progression du projet
-        new_progress = calculate_project_progress(project_id)
+        new_progress = calculate_project_progress(task.project_id)
         
         return jsonify({'success': True, 'progress': new_progress})
     except Exception as e:
@@ -1802,29 +1878,32 @@ def kanban_view():
 @login_required
 def update_project_task(task_id):
     try:
-        data = load_data()
+        user_id = session.get('user_id')
         task_data = request.get_json()
-        project_tasks = data.get('project_tasks', [])
         
-        for task in project_tasks:
-            if task['id'] == task_id:
-                task.update({
-                    'name': task_data.get('name', task['name']),
-                    'priority': task_data.get('priority', task['priority']),
-                    'project_id': task_data.get('project_id', task['project_id']),
-                    'updated_at': datetime.now().isoformat()
-                })
-                
-                # Synchroniser le champ completed avec le statut
-                completed_statuses = ['termine', 'fait', 'terminé', 'réalisée']
-                task['completed'] = task.get('status', '') in completed_statuses
-                break
+        # Récupérer la tâche depuis la base de données
+        task = ProjectTask.query.join(Project).filter(
+            ProjectTask.id == task_id,
+            Project.user_id == user_id
+        ).first()
         
-        data['project_tasks'] = project_tasks
-        save_data(data)
+        if not task:
+            return jsonify({'success': False, 'error': 'Tâche non trouvée'})
+        
+        # Mettre à jour les champs
+        task.name = task_data.get('name', task.name)
+        task.priority = task_data.get('priority', task.priority)
+        
+        # Synchroniser le statut si fourni
+        if 'status' in task_data:
+            completed_statuses = ['termine', 'fait', 'terminé', 'réalisée']
+            task.completed = task_data['status'] in completed_statuses
+        
+        db.session.commit()
         
         return jsonify({'success': True})
     except Exception as e:
+        db.session.rollback()
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/update_project_progress/<project_id>', methods=['POST'])
@@ -1840,7 +1919,7 @@ def update_project_progress_api(project_id):
 @login_required
 def add_project_task_from_tasks():
     try:
-        data = load_data()
+        user_id = session.get('user_id')
         
         # Récupérer les données du FormData
         task_name = request.form.get('name')
@@ -1854,33 +1933,43 @@ def add_project_task_from_tasks():
         if not project_id:
             return jsonify({'success': False, 'error': 'Le projet est requis'})
         
-        # S'assurer que project_tasks existe
-        if 'project_tasks' not in data:
-            data['project_tasks'] = []
+        # Vérifier que le projet appartient à l'utilisateur
+        project = Project.query.filter_by(id=project_id, user_id=user_id).first()
+        if not project:
+            return jsonify({'success': False, 'error': 'Projet non trouvé'})
         
         # Synchroniser le champ completed avec le statut
         completed_statuses = ['terminé', 'termine', 'réalisée', 'fait']
         is_completed = task_status in completed_statuses
         
-        task = {
-            'id': str(uuid.uuid4()),
-            'project_id': project_id,
-            'name': task_name,
-            'priority': task_priority,
+        # Créer la tâche dans la base de données
+        task = ProjectTask(
+            project_id=project_id,
+            name=task_name,
+            priority=task_priority,
+            completed=is_completed
+        )
+        
+        db.session.add(task)
+        db.session.commit()
+        
+        # Retourner la tâche créée au format attendu par le template
+        task_data = {
+            'id': task.id,
+            'project_id': task.project_id,
+            'name': task.name,
+            'priority': task.priority,
             'status': task_status,
-            'completed': is_completed,
+            'completed': task.completed,
             'description': '',
             'assignee': '',
             'due_date': '',
             'tags': [],
-            'created_at': datetime.now().isoformat(),
-            'updated_at': datetime.now().isoformat()
+            'created_at': task.created_at.isoformat() if task.created_at else datetime.now().isoformat(),
+            'updated_at': task.created_at.isoformat() if task.created_at else datetime.now().isoformat()
         }
         
-        data['project_tasks'].append(task)
-        save_data(data)
-        
-        return jsonify({'success': True, 'task': task})
+        return jsonify({'success': True, 'task': task_data})
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -1933,9 +2022,10 @@ def add_note_form():
 @app.route('/toggle_task/<task_id>')
 @login_required
 def toggle_task(task_id):
-    data = load_data()
+    user_id = session.get('user_id')
     
-    # Chercher dans les tâches générales
+    # Chercher d'abord dans les tâches générales (JSON)
+    data = load_data()
     for task in data.get('tasks', []):
         if task['id'] == task_id:
             task['completed'] = not task.get('completed', False)
@@ -1943,38 +2033,41 @@ def toggle_task(task_id):
             save_data(data)
             return redirect(url_for('taches'))
     
-    # Chercher dans les tâches de projet
-    for task in data.get('project_tasks', []):
-        if task['id'] == task_id:
-            task['completed'] = not task.get('completed', False)
-            # Utiliser un statut compatible avec le Kanban
-            task['status'] = 'terminé' if task['completed'] else 'a-faire'
-            save_data(data)
-            return redirect(url_for('taches'))
+    # Chercher dans les tâches de projet (base de données)
+    project_task = db.session.query(ProjectTask).join(Project).filter(
+        ProjectTask.id == task_id,
+        Project.user_id == user_id
+    ).first()
+    
+    if project_task:
+        project_task.completed = not project_task.completed
+        db.session.commit()
+        return redirect(url_for('taches'))
     
     return redirect(url_for('taches'))
 
 @app.route('/api/toggle-task/<task_id>', methods=['POST'])
 @login_required
 def toggle_task_api(task_id):
-    data = load_data()
+    user_id = session.get('user_id')
     
-    # Chercher dans les tâches générales
-    for task in data.get('tasks', []):
-        if task['id'] == task_id:
-            task['completed'] = not task.get('completed', False)
-            task['status'] = 'réalisée' if task['completed'] else 'en cours'
-            save_data(data)
-            return jsonify({'success': True})
+    # Chercher d'abord dans les tâches générales
+    task = Task.query.filter_by(id=task_id, user_id=user_id).first()
+    if task:
+        task.completed = not task.completed
+        db.session.commit()
+        return jsonify({'success': True})
     
     # Chercher dans les tâches de projet
-    for task in data.get('project_tasks', []):
-        if task['id'] == task_id:
-            task['completed'] = not task.get('completed', False)
-            # Utiliser un statut compatible avec le Kanban
-            task['status'] = 'terminé' if task['completed'] else 'a-faire'
-            save_data(data)
-            return jsonify({'success': True})
+    project_task = db.session.query(ProjectTask).join(Project).filter(
+        ProjectTask.id == task_id,
+        Project.user_id == user_id
+    ).first()
+    
+    if project_task:
+        project_task.completed = not project_task.completed
+        db.session.commit()
+        return jsonify({'success': True})
     
     return jsonify({'success': False, 'error': 'Tâche non trouvée'})
 

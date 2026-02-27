@@ -1137,17 +1137,24 @@ document.getElementById('createProjectForm').addEventListener('submit', function
         },
         body: JSON.stringify(projectData)
     })
-    .then(response => {
-        if (response.ok) {
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
             closeCreateProjectModal();
             location.reload();
         } else {
-            alert('Erreur lors de la création du projet');
+            console.error('Erreur détaillée:', data);
+            const errorMsg = data.message || 'Erreur lors de la création du projet';
+            // Afficher l'erreur dans une modal pour mieux la voir
+            alert('Erreur: ' + errorMsg);
+            // Aussi l'afficher dans la console pour copier
+            console.log('Message d\'erreur complet:', errorMsg);
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert('Erreur lors de la création du projet');
+        console.error('Error complet:', error);
+        alert('Erreur lors de la création du projet: ' + error.message);
+        console.log('Erreur complète pour débogage:', error);
     });
 });
 

@@ -1939,7 +1939,27 @@ function switchTab(tabName) {
         // Charger les données spécifiques à l'onglet si nécessaire
         if (tabName === 'members') {
             console.log('Chargement des membres pour l\'onglet membres');
+        } else if (tabName === 'tasks') {
+            console.log('Chargement des tâches pour l\'onglet tâches');
+            // Recharger les tâches depuis le serveur
+            fetch(`/api/get_project_tasks/{{ project.id }}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderKanbanBoard(data.tasks);
+                        // Mettre aussi à jour la vue checkbox si elle est visible
+                        const tasksCheckboxList = document.getElementById('tasksCheckboxList');
+                        if (tasksCheckboxList) {
+                            const completedCountEl = document.getElementById('completedCount');
+                            const totalCountEl = document.getElementById('totalCount');
+                            renderTaskList(data.tasks, tasksCheckboxList, completedCountEl, totalCountEl);
+                        }
                     }
+                })
+                .catch(error => {
+                    console.error('Error loading tasks for tab:', error);
+                });
+        }
     } else {
         console.error('Onglet non trouvé:', tabName);
     }
@@ -2113,6 +2133,22 @@ function saveTask(event) {
                         console.error('Error drawing task chart:', error);
                     }
                     
+                    // Rafraîchir le Kanban board
+                    try {
+                        fetch(`/api/get_project_tasks/{{ project.id }}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    renderKanbanBoard(data.tasks);
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error refreshing kanban:', error);
+                            });
+                    } catch (error) {
+                        console.error('Error refreshing kanban:', error);
+                    }
+                    
                     // Réinitialiser le drag & drop pour les nouvelles tâches
                     try {
                         if (typeof window.KanbanDragDrop !== 'undefined') {
@@ -2169,6 +2205,22 @@ function saveTask(event) {
                         drawTaskProgressChart();
                     } catch (error) {
                         console.error('Error drawing task chart:', error);
+                    }
+                    
+                    // Rafraîchir le Kanban board
+                    try {
+                        fetch(`/api/get_project_tasks/{{ project.id }}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    renderKanbanBoard(data.tasks);
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error refreshing kanban:', error);
+                            });
+                    } catch (error) {
+                        console.error('Error refreshing kanban:', error);
                     }
                     
                     // Réinitialiser le drag & drop pour les nouvelles tâches
@@ -2637,6 +2689,21 @@ function deleteSelectedFiles() {
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize task checkbox view
     initializeTaskCheckboxView();
+    
+    // Initialize Kanban board with fresh data
+    fetch(`/api/get_project_tasks/{{ project.id }}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderKanbanBoard(data.tasks);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading tasks for Kanban:', error);
+            // Fallback to static data
+            const taskData = {{ project_tasks | tojson }};
+            renderKanbanBoard(taskData);
+        });
     
     // Main progress chart
     drawProgressChart();
