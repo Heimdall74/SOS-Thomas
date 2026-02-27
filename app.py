@@ -30,25 +30,19 @@ app.config['SESSION_PERMANENT'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1)  # Au cas où, mais ne sera pas utilisé
 
 # Configuration de la base de données
-# En production, utilise PostgreSQL via DATABASE_URL
-# En développement, utilise SQLite local
 if os.environ.get("DATABASE_URL"):
     # Mode production (Render/Heroku/etc.)
     DATABASE_URL = os.environ.get("DATABASE_URL")
     app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 else:
-    # Mode développement local
-    DATABASE_URL = "sqlite:///sos_thomas.db"
+    # Mode développement local avec PostgreSQL
+    DATABASE_URL = "postgresql://db_sos_thomas_user:W4n8W0oqtxm78r1eZEMeDggJ04PD10Uc@dpg-d6grkm94tr6s73bf2cu0-a.frankfurt-postgres.render.com/db_sos_thomas"
     app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # Initialisation de la base de données
 db = SQLAlchemy(app)
-
-# Créer les tables automatiquement si elles n'existent pas
-with app.app_context():
-    db.create_all()
 
 # Créer le dossier uploads s'il n'existe pas
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
