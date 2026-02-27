@@ -156,27 +156,6 @@ class RegisterForm(FlaskForm):
     password = PasswordField('Mot de passe', validators=[DataRequired(), Length(min=6)])
     confirm_password = PasswordField('Confirmer le mot de passe', validators=[DataRequired(), EqualTo('password')])
 
-# Formulaires pour le profil
-class ProfileForm(FlaskForm):
-    first_name = StringField('Prénom')
-    last_name = StringField('Nom')
-    bio = TextAreaField('Bio / Description')
-    birth_date = DateField('Date de naissance')
-    location = StringField('Localisation')
-    phone = StringField('Téléphone')
-    address = TextAreaField('Adresse postale')
-    spotify_client_id = StringField('Spotify Client ID', description='Votre Client ID depuis Spotify Developer Dashboard')
-    spotify_client_secret = StringField('Spotify Client Secret', description='Votre Client Secret depuis Spotify Developer Dashboard')
-
-class ChangePasswordForm(FlaskForm):
-    current_password = PasswordField('Mot de passe actuel', validators=[DataRequired()])
-    new_password = PasswordField('Nouveau mot de passe', validators=[DataRequired(), Length(min=6)])
-    confirm_password = PasswordField('Confirmer le mot de passe', validators=[DataRequired(), EqualTo('new_password')])
-
-class PreferencesForm(FlaskForm):
-    language = SelectField('Langue', choices=[('fr', 'Français'), ('en', 'English'), ('es', 'Español')])
-    theme = SelectField('Thème', choices=[('light', 'Clair'), ('dark', 'Sombre'), ('auto', 'Auto')])
-
 class LinkForm(FlaskForm):
     title = StringField('Titre', validators=[DataRequired()])
     url = StringField('URL', validators=[DataRequired(), URL()])
@@ -188,6 +167,45 @@ class MessageForm(FlaskForm):
     contact = StringField('Contact', validators=[DataRequired()])
     text = TextAreaField('Message', validators=[DataRequired()])
 
+def init_classes():
+    """Initialiser les classes par défaut si elles n'existent pas"""
+    classes_data = [
+        {'nom': 'TC1', 'code': 'TC1'},
+        {'nom': 'TC2', 'code': 'TC2'},
+        {'nom': 'TC3', 'code': 'TC3'},
+        {'nom': 'TC4', 'code': 'TC4'},
+        {'nom': 'TC5', 'code': 'TC5'},
+        {'nom': 'AI1', 'code': 'AI1'},
+        {'nom': 'AI2', 'code': 'AI2'},
+        {'nom': 'AI3', 'code': 'AI3'},
+        {'nom': 'AI4', 'code': 'AI4'},
+        {'nom': 'AI5', 'code': 'AI5'}
+    ]
+    
+    for classe_data in classes_data:
+        existing_classe = Classe.query.filter_by(code=classe_data['code']).first()
+        if not existing_classe:
+            nouvelle_classe = Classe(
+                nom=classe_data['nom'],
+                code=classe_data['code']
+            )
+            db.session.add(nouvelle_classe)
+    
+    db.session.commit()
+
+def create_user_with_classe(username, email, password, classe_id):
+    """Créer un utilisateur avec une classe spécifique"""
+    user = User(
+        username=username,
+        email=email,
+        password_hash=generate_password_hash(password),
+        classe_id=classe_id,
+        first_connection=False
+    )
+    db.session.add(user)
+    db.session.commit()
+    return user
+
 # Modèles de données SQLAlchemy
 class User(db.Model):
     __tablename__ = 'users'
@@ -197,6 +215,8 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    classe_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=True)
+    first_connection = db.Column(db.Boolean, default=True)
     
     # Relations
     events = db.relationship('Event', backref='user', lazy=True, cascade='all, delete-orphan')
@@ -209,12 +229,21 @@ class User(db.Model):
     calls = db.relationship('Call', backref='user', lazy=True, cascade='all, delete-orphan')
     messages = db.relationship('Message', backref='user', lazy=True, cascade='all, delete-orphan')
     links = db.relationship('Link', backref='user', lazy=True, cascade='all, delete-orphan')
+    classe = db.relationship('Classe', backref='users')
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
     
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+class Classe(db.Model):
+    __tablename__ = 'classes'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    nom = db.Column(db.String(10), unique=True, nullable=False)
+    code = db.Column(db.String(10), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Event(db.Model):
     __tablename__ = 'events'
@@ -530,62 +559,19 @@ def delete_note(note_id):
         return True
     return False
 
-# Fonctions de gestion des profils
-def load_profiles():
-    profiles_file = BASE_DIR / 'data' / 'profiles.json'
-    if not os.path.exists(BASE_DIR / 'data'):
-        os.makedirs(BASE_DIR / 'data')
-    
-    if os.path.exists(profiles_file):
-        with open(profiles_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return {}
-
-def save_profiles(profiles):
-    profiles_file = BASE_DIR / 'data' / 'profiles.json'
-    with open(profiles_file, 'w', encoding='utf-8') as f:
-        json.dump(profiles, f, indent=2, ensure_ascii=False)
-
-def get_user_profile(user_id):
-    profiles = load_profiles()
-    return profiles.get(user_id, {
-        'first_name': '',
-        'last_name': '',
-        'bio': '',
-        'birth_date': '',
-        'location': '',
-        'phone': '',
-        'address': '',
-        'avatar': '',
-        'language': 'fr',
-        'theme': 'light',
-        'spotify_client_id': '',
-        'spotify_client_secret': '',
-        'spotify_connected': False,
-        'spotify_access_token': '',
-        'spotify_refresh_token': '',
-        'spotify_expires_at': 0,
-        'created_at': datetime.now().isoformat()
-    })
-
-def save_user_profile(user_id, profile_data):
-    profiles = load_profiles()
-    profile_data['updated_at'] = datetime.now().isoformat()
-    profiles[user_id] = profile_data
-    save_profiles(profiles)
-
 # Fonctions utilitaires Spotify
 def get_user_spotify_config(user_id):
     """Récupère la configuration Spotify de l'utilisateur"""
-    profile = get_user_profile(user_id)
-    return {
-        'client_id': profile.get('spotify_client_id'),
-        'client_secret': profile.get('spotify_client_secret'),
-        'access_token': profile.get('spotify_access_token'),
-        'refresh_token': profile.get('spotify_refresh_token'),
-        'expires_at': profile.get('spotify_expires_at', 0),
-        'connected': profile.get('spotify_connected', False)
-    }
+    # profile = get_user_profile(user_id)
+    # return {
+    #     'client_id': profile.get('spotify_client_id'),
+    #     'client_secret': profile.get('spotify_client_secret'),
+    #     'access_token': profile.get('spotify_access_token'),
+    #     'refresh_token': profile.get('spotify_refresh_token'),
+    #     'expires_at': profile.get('spotify_expires_at', 0),
+    #     'connected': profile.get('spotify_connected', False)
+    # }
+    return {'connected': False}  # Temporairement désactivé
 
 def save_user_spotify_tokens(user_id, access_token, refresh_token, expires_in):
     """Sauvegarde les tokens Spotify de l'utilisateur"""
@@ -759,12 +745,62 @@ def logout():
     flash('Vous avez été déconnecté', 'info')
     return redirect(url_for('login'))
 
-@app.route('/first_connection')
+@app.route('/first_connection', methods=['GET', 'POST'])
 def first_connection():
-    users_count = User.query.count()
-    if users_count > 0:  # Si des utilisateurs existent, rediriger vers login
-        return redirect(url_for('login'))
-    return render_template('first_connection.html')
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        classe_id = request.form.get('classe_id')
+        
+        if not all([username, email, password, classe_id]):
+            flash('Tous les champs sont obligatoires', 'error')
+            return render_template('first_connection.html', classes=get_all_classes())
+        
+        try:
+            user = create_user_with_classe(username, email, password, int(classe_id))
+            flash(f'Compte "{username}" créé avec succès !', 'success')
+            return redirect(url_for('login'))
+        except Exception as e:
+            flash('Une erreur est survenue lors de la création du compte. Veuillez réessayer.', 'error')
+            print(f"Erreur lors de la création de l'utilisateur: {e}")
+    
+    # Initialiser les classes si elles n'existent pas
+    init_classes()
+    
+    return render_template('first_connection.html', classes=get_all_classes())
+
+def get_current_user():
+    """Récupérer l'utilisateur connecté avec sa classe"""
+    user_id = session.get('user_id')
+    if user_id:
+        return User.query.options(db.joinedload(User.classe)).filter_by(id=user_id).first()
+    return None
+
+def get_all_classes():
+    """Récupérer toutes les classes disponibles"""
+    return Classe.query.order_by(Classe.nom).all()
+
+@app.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    current_user = get_current_user()
+    
+    if request.method == 'POST':
+        new_classe_id = request.form.get('classe_id')
+        if new_classe_id:
+            try:
+                current_user.classe_id = int(new_classe_id)
+                db.session.commit()
+                flash('Classe mise à jour avec succès !', 'success')
+            except Exception as e:
+                flash('Erreur lors de la mise à jour de la classe', 'error')
+                print(f"Erreur lors de la mise à jour de la classe: {e}")
+        return redirect(url_for('profile'))
+    
+    return render_template('profile.html', 
+                         current_user=current_user, 
+                         classes=get_all_classes())
 
 # Routes principales
 @app.route('/')
@@ -787,7 +823,7 @@ def dashboard():
         'notes': [{'id': n.id, 'title': n.title, 'content': n.content[:100] + '...' if len(n.content) > 100 else n.content} for n in notes]
     }
     
-    return render_template('dashboard.html', data=data, current_date=current_date)
+    return render_template('dashboard.html', data=data, current_date=current_date, current_user=get_current_user())
 
 @app.route('/agenda')
 @login_required
@@ -801,7 +837,7 @@ def agenda():
         'events': [{'id': e.id, 'date': e.date, 'time': e.time, 'title': e.title, 'category': e.category} for e in events]
     }
     
-    return render_template('agenda.html', data=data, form=form)
+    return render_template('agenda.html', data=data, form=form, current_user=get_current_user())
 
 @app.route('/projets')
 @login_required
@@ -817,7 +853,7 @@ def projets():
                      'description': p.description, 'objectives': p.objectives, 'progress': p.progress} for p in projects]
     }
     
-    return render_template('projets.html', data=data, form=form)
+    return render_template('projets.html', data=data, form=form, current_user=get_current_user())
 
 @app.route('/taches')
 @login_required
@@ -900,7 +936,7 @@ def taches():
     
     data['all_tasks'] = all_tasks
     
-    return render_template('taches.html', data=data, form=form, project_form=project_form, sort_by=sort_by, sort_order=sort_order, show_completed=show_completed)
+    return render_template('taches.html', data=data, form=form, project_form=project_form, sort_by=sort_by, sort_order=sort_order, show_completed=show_completed, current_user=get_current_user())
 
 @app.route('/notes')
 @login_required
@@ -914,7 +950,7 @@ def notes():
         'notes': [{'id': n.id, 'title': n.title, 'content': n.content, 'updated_at': n.updated_at.isoformat() if n.updated_at else ''} for n in notes]
     }
     
-    return render_template('notes.html', data=data, form=form)
+    return render_template('notes.html', data=data, form=form, current_user=get_current_user())
 
 @app.route('/note_editor')
 @login_required
@@ -1203,35 +1239,6 @@ def liens():
     data = load_data()
     form = LinkForm()
     return render_template('liens.html', data=data, form=form)
-
-# Routes pour le profil
-@app.route('/profile')
-@login_required
-def profile():
-    user_id = session['user_id']
-    profile = get_user_profile(user_id)
-    
-    # Récupérer l'utilisateur avec SQLAlchemy
-    user = User.query.filter_by(id=user_id).first()
-    
-    # Si l'utilisateur n'est pas trouvé, utiliser les données de session
-    if not user:
-        user = {
-            'username': session.get('username', 'Utilisateur'),
-            'email': session.get('email', ''),
-            'created_at': datetime.now()
-        }
-    
-    profile_form = ProfileForm(data=profile)
-    password_form = ChangePasswordForm()
-    preferences_form = PreferencesForm(data=profile)
-    
-    return render_template('profile.html', 
-                         profile=profile, 
-                         user=user,
-                         profile_form=profile_form,
-                         password_form=password_form,
-                         preferences_form=preferences_form)
 
 @app.route('/profile/update', methods=['POST'])
 @login_required

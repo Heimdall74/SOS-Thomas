@@ -273,7 +273,13 @@
                                 <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                                     <div class="px-4 py-3 border-b border-gray-200">
                                         <p class="text-sm font-medium text-gray-900">{{ session.username }}</p>
-                                        <p class="text-xs text-gray-500">Connecté</p>
+                                        <p class="text-xs text-gray-500">
+                                            {% if current_user and current_user.classe %}
+                                                {{ current_user.classe.nom }}
+                                            {% else %}
+                                                Connecté
+                                            {% endif %}
+                                        </p>
                                     </div>
                                     <div class="py-2">
                                         <a href="{{ url_for('profile') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">

@@ -2083,7 +2083,13 @@
                     <div class="user-avatar">{{ session.username[0]|upper if session.username else 'U' }}</div>
                     <div class="user-details">
                         <h3>{{ session.username if session.username else 'Utilisateur' }}</h3>
-                        <p>Administrateur</p>
+                        <p>
+                            {% if current_user and current_user.classe %}
+                                {{ current_user.classe.nom }}
+                            {% else %}
+                                Administrateur
+                            {% endif %}
+                        </p>
                     </div>
                 </div>
             </div>

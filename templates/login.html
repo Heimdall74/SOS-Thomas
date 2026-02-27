@@ -81,21 +81,14 @@
             </button>
         </form>
 
-        <!-- Lien vers inscription -->
+        <!-- Lien vers première connexion -->
         <div class="mt-6 text-center">
             <p class="text-gray-600">
                 Pas encore de compte ?
-                <a href="{{ url_for('register') }}" class="text-blue-600 hover:text-blue-500 font-medium">
-                    Créer un compte
+                <a href="{{ url_for('first_connection') }}" class="text-blue-600 hover:text-blue-500 font-medium">
+                    Première connexion
                 </a>
             </p>
-        </div>
-
-        <!-- Première connexion -->
-        <div class="mt-4 text-center">
-            <a href="{{ url_for('first_connection') }}" class="text-sm text-gray-500 hover:text-gray-700">
-                <i class="fas fa-magic mr-1"></i>Première connexion ?
-            </a>
         </div>
     </div>
 

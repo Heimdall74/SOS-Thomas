@@ -617,6 +617,9 @@ async function toggleTaskComplete(checkbox, taskId) {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async function() {
+    // Charger le thème sauvegardé
+    loadTheme();
+    
     await loadWidgetData();
     
     // Update stats cards and shortcuts with initial data
@@ -992,22 +995,23 @@ let isDarkMode = false;
 let currentBaseTheme = 'reve';
 
 function toggleDarkMode() {
-    console.log('toggleDarkMode called, isDarkMode:', isDarkMode);
+    const isDarkMode = document.body.classList.toggle('dark-mode');
     
-    if (isDarkMode) {
-        // Switch to normal mode
-        console.log('Switching to normal mode');
-        changeTheme(currentBaseTheme);
-        isDarkMode = false;
-        const moonButton = document.querySelector('.icon-button[onclick*="toggleDarkMode"]');
-        if (moonButton) {
-            moonButton.textContent = '🌙';
-        }
-    } else {
-        // Switch to dark mode - apply dark filter to current theme
-        console.log('Switching to dark mode, base theme:', currentBaseTheme);
-        applyDarkFilter(currentBaseTheme);
-        isDarkMode = true;
+    // Sauvegarder l'état du thème
+    localStorage.setItem('darkMode', isDarkMode);
+    
+    // Mettre à jour l'icône du bouton
+    const moonButton = document.querySelector('.icon-button[onclick*="toggleDarkMode"]');
+    if (moonButton) {
+        moonButton.textContent = isDarkMode ? '☀️' : '🌙';
+    }
+}
+
+// Charger l'état du thème au démarrage
+function loadTheme() {
+    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+    if (savedDarkMode) {
+        document.body.classList.add('dark-mode');
         const moonButton = document.querySelector('.icon-button[onclick*="toggleDarkMode"]');
         if (moonButton) {
             moonButton.textContent = '☀️';
