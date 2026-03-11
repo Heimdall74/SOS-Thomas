@@ -30,12 +30,18 @@ app.config['SESSION_PERMANENT'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1)  # Au cas où, mais ne sera pas utilisé
 
 # Configuration de la base de données
-if os.environ.get("DATABASE_URL"):
+if os.environ.get("USE_LOCAL_DB") == "true":
+    # Mode développement local avec SQLite
+    DATABASE_PATH = BASE_DIR / 'database' / 'sos_thomas.db'
+    DATABASE_PATH.parent.mkdir(exist_ok=True)
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DATABASE_PATH}"
+    print(f"Base de données locale SQLite: {DATABASE_PATH}")
+elif os.environ.get("DATABASE_URL"):
     # Mode production (Render/Heroku/etc.)
     DATABASE_URL = os.environ.get("DATABASE_URL")
     app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 else:
-    # Mode développement local avec PostgreSQL
+    # Mode développement local avec PostgreSQL (fallback)
     DATABASE_URL = "postgresql://db_sos_thomas_user:W4n8W0oqtxm78r1eZEMeDggJ04PD10Uc@dpg-d6grkm94tr6s73bf2cu0-a.frankfurt-postgres.render.com/db_sos_thomas"
     app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 

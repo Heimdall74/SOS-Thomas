@@ -15,8 +15,8 @@ from datetime import datetime
 # Ajouter le répertoire parent au chemin Python
 sys.path.insert(0, str(Path(__file__).parent))
 
-from app import app, db
-from app import User, Event
+from app import app, db, init_classes, create_user_with_classe
+from app import User, Event, Classe
 from werkzeug.security import generate_password_hash
 
 def import_users_from_json():
@@ -24,11 +24,11 @@ def import_users_from_json():
     users_file = Path(__file__).parent / 'data' / 'users.json'
     
     if not users_file.exists():
-        print("⚠️  Fichier data/users.json non trouvé, passage de l'import des utilisateurs")
+        print("ATTENTION: Fichier data/users.json non trouve, passage de l'import des utilisateurs")
         return
     
     try:
-        print("📥 Importation des utilisateurs depuis data/users.json...")
+        print("Importation des utilisateurs depuis data/users.json...")
         
         with open(users_file, 'r', encoding='utf-8') as f:
             users_data = json.load(f)
@@ -43,7 +43,7 @@ def import_users_from_json():
             ).first()
             
             if existing_user:
-                print(f"  ⚠️  Utilisateur '{user_data.get('username')}' existe déjà, ignoré")
+                print(f"  ATTENTION: Utilisateur '{user_data.get('username')}' existe deja, ignore")
                 continue
             
             # Créer le nouvel utilisateur
@@ -59,12 +59,12 @@ def import_users_from_json():
             db.session.add(user)
             db.session.commit()
             imported_count += 1
-            print(f"  ✅ Utilisateur '{user_data.get('username')}' importé")
+            print(f"  OK: Utilisateur '{user_data.get('username')}' importe")
         
-        print(f"🎉 Importation des utilisateurs terminée: {imported_count} utilisateurs ajoutés")
+        print(f"Importation des utilisateurs terminee: {imported_count} utilisateurs ajoutes")
         
     except Exception as e:
-        print(f"❌ Erreur lors de l'importation des utilisateurs: {e}")
+        print(f"ERREUR: Erreur lors de l'importation des utilisateurs: {e}")
         db.session.rollback()
 
 def import_events_from_json():
@@ -72,11 +72,11 @@ def import_events_from_json():
     events_file = Path(__file__).parent / 'data' / 'events.json'
     
     if not events_file.exists():
-        print("⚠️  Fichier data/events.json non trouvé, passage de l'import des événements")
+        print("ATTENTION: Fichier data/events.json non trouve, passage de l'import des evenements")
         return
     
     try:
-        print("📥 Importation des événements depuis data/events.json...")
+        print("Importation des evenements depuis data/events.json...")
         
         with open(events_file, 'r', encoding='utf-8') as f:
             events_data = json.load(f)
@@ -90,7 +90,7 @@ def import_events_from_json():
                 # Prendre le premier utilisateur disponible
                 first_user = User.query.first()
                 if not first_user:
-                    print("  ⚠️  Aucun utilisateur trouvé, impossible d'importer les événements")
+                    print("  ATTENTION: Aucun utilisateur trouve, impossible d'importer les evenements")
                     break
                 user_id = first_user.id
             
@@ -106,12 +106,12 @@ def import_events_from_json():
             db.session.add(event)
             db.session.commit()
             imported_count += 1
-            print(f"  ✅ Événement '{event_data.get('title')}' importé")
+            print(f"  OK: Evenement '{event_data.get('title')}' importe")
         
-        print(f"🎉 Importation des événements terminée: {imported_count} événements ajoutés")
+        print(f"Importation des evenements terminee: {imported_count} evenements ajoutes")
         
     except Exception as e:
-        print(f"❌ Erreur lors de l'importation des événements: {e}")
+        print(f"ERREUR: Erreur lors de l'importation des evenements: {e}")
         db.session.rollback()
 
 def init_database():
@@ -135,6 +135,32 @@ def init_database():
                 
             print(f"\nTotal: {len(tables)} tables créées")
             
+            # Initialiser les classes par défaut
+            print("\nInitialisation des classes par défaut...")
+            init_classes()
+            print("OK: Classes initialisées")
+            
+            # Créer un utilisateur par défaut si aucun n'existe
+            user_count = User.query.count()
+            if user_count == 0:
+                print("Aucun utilisateur trouvé. Création d'un utilisateur par défaut...")
+                
+                # Récupérer la classe TC2
+                tc2_classe = Classe.query.filter_by(code='TC2').first()
+                if tc2_classe:
+                    # Créer un utilisateur de test
+                    test_user = create_user_with_classe(
+                        username='thomas',
+                        email='thomas@esitc.local',
+                        password='test123',
+                        classe_id=tc2_classe.id
+                    )
+                    print(f"OK: Utilisateur de test créé: {test_user.username} (mot de passe: test123)")
+                else:
+                    print("ATTENTION: Classe TC2 non trouvée")
+            else:
+                print(f"OK: {user_count} utilisateur(s) déjà présent(s) dans la base")
+            
             # Importer les données depuis les fichiers JSON
             print("\n" + "="*50)
             print("DÉBUT DE L'IMPORTATION DES DONNÉES")
@@ -147,9 +173,10 @@ def init_database():
             print("\n" + "="*50)
             print("INITIALISATION TERMINÉE AVEC SUCCÈS")
             print("="*50)
+            print("\nVous pouvez maintenant lancer l'application avec: python app.py")
             
         except Exception as e:
-            print(f"❌ Erreur lors de l'initialisation de la base de données: {e}")
+            print(f"ERREUR: Erreur lors de l'initialisation de la base de données: {e}")
             sys.exit(1)
 
 if __name__ == "__main__":
